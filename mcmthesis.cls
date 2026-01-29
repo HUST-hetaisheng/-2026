@@ -54,7 +54,7 @@
 \ProcessOptionsX\relax
 \LoadClass[12pt]{article}
 \newcommand{\team}{Team \#\ \MCM@opt@tcn}
-% \RequirePackage{fancyhdr, fancybox}  % 暂时注释 - 包未找到
+\RequirePackage{fancyhdr, fancybox}  % 暂时注释 - 包未找到
 \RequirePackage{ifthen}
 \RequirePackage{listings}
 \RequirePackage[toc, page, title, titletoc, header]{appendix}
@@ -103,7 +103,7 @@
 \lhead{\small\sffamily \team}
 \rhead{\small\sffamily Page \thepage\ of \pageref{LastPage}}
 }
-\pagestyle{main}
+% \pagestyle{main}
 
 \fancypagestyle{aimain}{
 \fancyhf{}
@@ -137,7 +137,7 @@
   \fi
   \newpage
   %\setcounter{page}{1}
-  \pagestyle{fancy}
+  \pagestyle{main}
   \ifMCM@opt@titlepage
     \MCM@maketitle
   \fi
