@@ -54,7 +54,7 @@
 \ProcessOptionsX\relax
 \LoadClass[12pt]{article}
 \newcommand{\team}{Team \#\ \MCM@opt@tcn}
-\RequirePackage{fancyhdr, fancybox}
+% \RequirePackage{fancyhdr, fancybox}  % 暂时注释 - 包未找到
 \RequirePackage{ifthen}
 \RequirePackage{listings}
 \RequirePackage[toc, page, title, titletoc, header]{appendix}
