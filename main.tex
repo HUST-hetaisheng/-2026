@@ -164,7 +164,15 @@ a^2 \label{aa}
 % Full modeling for Question 1 (all seasons)
 % ============================================
 
-\section{Model 1: Inverse Estimation of Fan Votes with Season-Dependent Rules}
+\section{Model 1: Bayesian Inverse Estimation of Fan Votes}
+
+\subsection{Problem Formulation: An Inverse Problem}
+Estimating fan votes from observed eliminations is an \textbf{inverse problem}: given the output (who was eliminated), we infer the hidden input (fan votes). This problem is inherently \emph{under-determined}---many vote distributions can produce the same elimination outcome. Our approach addresses this by:
+\begin{enumerate}
+\item Formulating season-specific elimination rules as probabilistic constraints;
+\item Incorporating temporal smoothness and maximum-entropy priors to regularize the solution space;
+\item Quantifying uncertainty through Bayesian posterior inference.
+\end{enumerate}
 
 \subsection{Season Rules (Three Regimes)}
 The show combines judges' scores and fan votes using different rules across seasons:
@@ -223,19 +231,42 @@ c_{e,t}\le c_{p,t}+\delta_t,\qquad \forall e\in E_t,\ \forall p\in S_t.
 \end{equation}
 If $E_t=\emptyset$ (no elimination), we enforce $\delta_t=0$.
 
-\paragraph{Unique solution via ``minimum-assumption'' regularization (convex).}
-We choose vote shares that (i) minimize slack, (ii) change smoothly week to week, and (iii) maximize entropy:
+\paragraph{Bayesian formulation with soft constraints.}
+We reformulate the problem in a Bayesian framework. Let $\bm v=(v_{i,t})$ denote all vote shares. The posterior is:
 \begin{equation}
-\min_{\{v_{i,t}\},\{\delta_t\}}
+p(\bm v \mid \text{Elim}) \propto p(\text{Elim} \mid \bm v) \cdot p(\bm v),
+\label{eq:bayes}
+\end{equation}
+where the likelihood encodes elimination constraints and the prior encodes regularization.
+
+\paragraph{Soft elimination likelihood.}
+Instead of hard constraints, we use a softmax likelihood that the eliminated contestant has the lowest combined score:
+\begin{equation}
+p(e_t \mid \bm v_t) = \frac{\exp(-\tau \cdot c_{e_t,t})}{\sum_{i\in A_t}\exp(-\tau \cdot c_{i,t})},
+\label{eq:soft_elim}
+\end{equation}
+where $\tau>0$ is a temperature parameter. As $\tau\to\infty$, this approaches a hard constraint.
+
+\paragraph{Prior: entropy + temporal smoothness.}
+We impose a composite prior:
+\begin{equation}
+p(\bm v) \propto \exp\left(\alpha\sum_{t,i\in A_t}\mathrm{entr}(v_{i,t}) - \beta\sum_{t=2}^{T}\lVert \bm v_t-\bm v_{t-1}\rVert_{1}\right),
+\label{eq:prior}
+\end{equation}
+where $\mathrm{entr}(x)=-x\log x$ is entropy (favoring uniform distribution when uninformed) and the $L_1$ term encourages temporal stability.
+
+\paragraph{MAP estimation (convex optimization).}
+The maximum a posteriori (MAP) estimate maximizes the log-posterior, yielding:
+\begin{equation}
+\min_{\{v_{i,t}\}}
 \quad
-M\sum_{t=1}^{T}\delta_t
+-\sum_{t:E_t\neq\emptyset}\log p(e_t\mid \bm v_t)
 +\beta\sum_{t=2}^{T}\lVert \bm v_t-\bm v_{t-1}\rVert_{1}
 -\alpha\sum_{t=1}^{T}\sum_{i\in A_t}\mathrm{entr}(v_{i,t}),
 \label{eq:percent_obj}
 \end{equation}
-subject to simplex constraints and Eq.~\eqref{eq:percent_elim}.
-Here $\bm v_t=(v_{i,t})_{i\in A_t}$ and $\mathrm{entr}(x)=-x\log x$.
-This is a convex optimization problem (linear constraints + convex objective).
+subject to simplex constraints $v_{i,t}\ge 0$, $\sum_{i\in A_t}v_{i,t}=1$.
+This is a convex optimization problem solvable by interior-point methods.
 
 % ------------------------------------------------
 \subsection{Regime B: Rank Seasons (1--2) --- Integer Inference of Fan Ranks}
@@ -320,9 +351,38 @@ solve the ILP for each candidate, and pick the solution with minimum objective v
 Finally, map ranks to vote shares by Eq.~\eqref{eq:rank_to_share}.
 
 % ------------------------------------------------
-\subsection{Consistency Evaluation (Back-Substitution)}
+\subsection{Strengthened Constraints for Improved Identifiability}
+To reduce the solution space and improve certainty, we add auxiliary constraints derived from observed outcomes.
+
+\paragraph{Finals ranking constraint.}
+In the final week, the top 3 (or more) contestants are ranked. Let $\pi$ be the observed final ranking. We enforce:
+\begin{equation}
+c_{\pi(1),T} > c_{\pi(2),T} > c_{\pi(3),T} > \cdots
+\label{eq:finals}
+\end{equation}
+This provides strong constraints on the final week's vote shares.
+
+\paragraph{Cumulative consistency constraint.}
+Contestants who survive longer should, on average, have better cumulative scores. For contestants $i,j$ with $\mathrm{exit}(i)<\mathrm{exit}(j)$:
+\begin{equation}
+\sum_{t=1}^{\mathrm{exit}(i)} c_{i,t} \le \sum_{t=1}^{\mathrm{exit}(i)} c_{j,t} + \epsilon_{ij},
+\label{eq:cumulative}
+\end{equation}
+where $\epsilon_{ij}\ge 0$ is a slack for occasional upsets.
+
+\paragraph{Transitivity constraint.}
+If contestant $i$ is eliminated before $j$, there must exist at least one week where $i$ ranked lower:
+\begin{equation}
+\mathrm{exit}(i)<\mathrm{exit}(j) \Rightarrow \exists\, t\le\mathrm{exit}(i):\ c_{i,t}<c_{j,t}.
+\label{eq:transitive}
+\end{equation}
+
+% ------------------------------------------------
+\subsection{Consistency Evaluation Metrics}
 Given estimated $\hat v_{i,t}$, we re-compute eliminations under the regime rule and compare with observed $E_t$.
-We report:
+We report multiple metrics:
+
+\paragraph{Primary metrics.}
 \begin{align}
 \text{Exact-set accuracy} &= \frac{1}{N_{\text{elim}}}\sum_{t:E_t\neq\emptyset}\mathbf{1}(\hat E_t=E_t),\\
 \text{Jaccard}(t) &= \frac{|\hat E_t\cap E_t|}{|\hat E_t\cup E_t|},\qquad
@@ -335,51 +395,91 @@ We report:
 \end{align}
 where $m=|E_t|$ and order statistics are computed among active contestants.
 
-% ------------------------------------------------
-\subsection{Uncertainty: Perturb-and-Resolve Ensemble (Chosen Scheme)}
-The inverse problem may be non-identifiable; thus we quantify uncertainty using an ensemble of solutions.
+\paragraph{Additional robustness metrics.}
+\begin{align}
+\text{AUC-ROC} &= \text{Area under ROC curve for predicting elimination probability},\\
+\tau_K &= \text{Kendall's } \tau \text{ between predicted and observed weekly rankings}.
+\end{align}
 
-\paragraph{Ensemble generation.}
+% ------------------------------------------------
+\subsection{Uncertainty Quantification: Multi-Model Bayesian Ensemble}
+The inverse problem admits multiple solutions; we quantify uncertainty through a comprehensive ensemble approach combining multiple strategies.
+
+\subsubsection{Strategy 1: Posterior Sampling (MCMC)}
+For Percent seasons, we sample from the full posterior Eq.~\eqref{eq:bayes} using Hamiltonian Monte Carlo (HMC):
+\begin{equation}
+\{\bm v^{(k)}\}_{k=1}^{K} \sim p(\bm v \mid \text{Elim}).
+\end{equation}
+This directly provides posterior samples for uncertainty quantification.
+
+\subsubsection{Strategy 2: Multi-Regularization Ensemble}
+We solve the optimization under different regularization schemes:
+\begin{itemize}
+\item \textbf{Model A (Entropy)}: $-\alpha\sum_{t,i}\mathrm{entr}(v_{i,t})$ (maximum entropy, uniform preference).
+\item \textbf{Model B (L2-smooth)}: $\beta\sum_t\|\bm v_t-\bm v_{t-1}\|_2^2$ (quadratic temporal smoothness).
+\item \textbf{Model C (Sparse)}: $\gamma\sum_{t,i}v_{i,t}^{0.5}$ (promotes vote concentration on fewer contestants).
+\end{itemize}
+Each model captures different prior beliefs about voting behavior.
+
+\subsubsection{Strategy 3: Perturb-and-Resolve}
 For $k=1,\dots,K$:
 \begin{itemize}
-\item Perturb hyperparameters (e.g., $\alpha,\beta$) slightly:
-$\alpha^{(k)}=\alpha(1+\epsilon_\alpha)$, $\beta^{(k)}=\beta(1+\epsilon_\beta)$,
-with $\epsilon_\alpha,\epsilon_\beta$ small (e.g., uniform in $[-0.1,0.1]$).
-\item Add tiny noise to judges totals (robustness to scoring subjectivity/recording):
-$J^{(k)}_{i,t}=J_{i,t}+\eta_{i,t}$ with $\eta_{i,t}$ very small.
-\item Re-solve the corresponding regime optimization to obtain $\hat v^{(k)}_{i,t}$.
+\item Perturb hyperparameters: $\alpha^{(k)}=\alpha(1+\epsilon_\alpha)$, $\beta^{(k)}=\beta(1+\epsilon_\beta)$, with $\epsilon\sim\mathcal{U}(-0.1,0.1)$.
+\item Add noise to judges scores: $J^{(k)}_{i,t}=J_{i,t}+\eta_{i,t}$, $\eta_{i,t}\sim\mathcal{N}(0,0.5^2)$.
+\item Re-solve to obtain $\hat v^{(k)}_{i,t}$.
 \end{itemize}
 
-\paragraph{Uncertainty summaries.}
-For each contestant-week $(i,t)$:
+\subsubsection{Ensemble Aggregation}
+We aggregate solutions using inverse-slack weighting:
+\begin{equation}
+\hat v_{i,t}^{\text{ens}} = \sum_{m} w_m \hat v_{i,t}^{(m)}, \quad w_m = \frac{\exp(-\lambda \cdot \text{TotalSlack}_m)}{\sum_{m'}\exp(-\lambda \cdot \text{TotalSlack}_{m'})},
+\label{eq:ensemble_weight}
+\end{equation}
+where models with lower slack (better constraint satisfaction) receive higher weights.
+
+\subsubsection{Uncertainty Summaries}
+For each contestant-week $(i,t)$, we compute:
 \begin{align}
-\mu_{i,t} &= \frac{1}{K}\sum_{k=1}^{K}\hat v^{(k)}_{i,t},\qquad
-\sigma_{i,t} = \sqrt{\frac{1}{K-1}\sum_{k=1}^{K}(\hat v^{(k)}_{i,t}-\mu_{i,t})^2},\\
-\text{CI}_{95\%}(i,t) &= \left[Q_{2.5\%}\big(\hat v^{(1:K)}_{i,t}\big),\
-Q_{97.5\%}\big(\hat v^{(1:K)}_{i,t}\big)\right],\\
-\text{Width}(i,t) &= U_{i,t}-L_{i,t},\qquad
+\mu_{i,t} &= \mathbb{E}[v_{i,t}\mid\text{Elim}], \quad
+\sigma_{i,t} = \sqrt{\mathrm{Var}[v_{i,t}\mid\text{Elim}]},\\
+\text{CI}_{95\%}(i,t) &= \left[Q_{2.5\%},\ Q_{97.5\%}\right] \text{ of posterior/ensemble},\\
+\text{Width}(i,t) &= Q_{97.5\%}-Q_{2.5\%},\quad
 \text{CV}(i,t)=\sigma_{i,t}/\mu_{i,t}.
 \end{align}
-We expect wider intervals in weeks with weaker constraints (e.g., no elimination episodes or very close contests).
+
+\paragraph{Interpretation of uncertainty.}
+We expect:
+\begin{itemize}
+\item \textbf{High certainty}: weeks with elimination (strong constraint) and large margins.
+\item \textbf{Low certainty}: no-elimination weeks, close contests, early weeks with many contestants.
+\end{itemize}
 
 % ------------------------------------------------
 \subsection{Workflow Summary (Algorithm)}
 \begin{algorithm}[H]
-\caption{Season-dependent inverse voting (Question 1)}
+\caption{Bayesian Inverse Voting with Multi-Model Ensemble (Question 1)}
 \begin{algorithmic}[1]
-\State Build $J_{i,t}$, $A_t$, $E_t$ (exclude \texttt{Withdrew} from $E_t$).
-\For{each season}
+\State \textbf{Data Preparation:} Build $J_{i,t}$, $A_t$, $E_t$ (exclude \texttt{Withdrew} from $E_t$); extract finals rankings.
+\For{each season $s$}
+    \State \textbf{Phase 1: Point Estimation (MAP)}
     \If{Season in 3--27 (Percent)}
-        \State Solve convex program \eqref{eq:percent_obj} to estimate $\hat{v}_{i,t}$.
+        \State Solve convex program \eqref{eq:percent_obj} with constraints \eqref{eq:finals}, \eqref{eq:cumulative}.
     \ElsIf{Season in 1--2 (Rank)}
         \State Solve ILP \eqref{eq:perm}+\eqref{eq:rank_elim}+\eqref{eq:rank_obj} for fan ranks $\hat{r}^F$.
         \State Map $\hat{r}^F \rightarrow \hat{v}$ by \eqref{eq:rank_to_share}.
     \ElsIf{Season in 28--34 (Rank + Bottom2 + Judges' Save)}
-        \State Enumerate bottom2 partner candidate $b$; solve ILP with \eqref{eq:bottom2} and judges-save term.
+        \State Enumerate bottom-2 partner $b$; solve ILP with \eqref{eq:bottom2} and judges-save penalty.
         \State Map ranks to $\hat{v}$ by \eqref{eq:rank_to_share}.
     \EndIf
-    \State Back-substitute to compute $\hat{E}_t$, accuracy/Jaccard/margins.
-    \State Run perturb-and-resolve ensemble ($K$ times) to compute CI widths and CV.
+    \State
+    \State \textbf{Phase 2: Uncertainty Quantification}
+    \State Run multi-model ensemble: Models A (entropy), B (L2), C (sparse).
+    \State Run perturb-and-resolve ($K=100$ iterations).
+    \State Aggregate via Eq.~\eqref{eq:ensemble_weight}; compute $\mu_{i,t}$, $\sigma_{i,t}$, CI$_{95\%}$.
+    \State
+    \State \textbf{Phase 3: Validation}
+    \State Back-substitute to compute $\hat{E}_t$; evaluate accuracy, Jaccard, AUC-ROC, Kendall's $\tau$.
+    \State Report CI widths and CV as certainty measures.
 \EndFor
 \end{algorithmic}
 \end{algorithm}
