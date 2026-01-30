@@ -189,24 +189,7 @@ In the absence of evidence to the contrary, fan vote distributions should be as 
 
 \subsubsection{Rule Mechanism Assumptions}
 
-\textbf{Assumption 4 (Rule Faithfulness):}
-The show strictly adheres to its publicly stated elimination rules in each season:
-\begin{itemize}
-    \item \textbf{Seasons 1--2 (Rank):} Eliminated contestants have the worst combined rank (judge rank + fan rank).
-    \item \textbf{Seasons 3--27 (Percent):} Eliminated contestants have the lowest combined score (judge share + fan share).
-    \item \textbf{Seasons 28--34 (Bottom2):} The bottom two by combined rank are identified; judges eliminate one of them.
-\end{itemize}
-\emph{Justification:} Publicly documented rule changes align with our season classifications \cite{WikiDWTS}. Any ``upset'' eliminations (where constraints cannot be perfectly satisfied) are handled via slack variables, not by discarding the rule assumption.
-
-\textbf{Assumption 5 (Elimination Consistency):}
-For Percent seasons, eliminated contestants $e\in E_t$ must have combined scores no greater than surviving contestants $p\in S_t$:
-\begin{equation}
-c_{e,t}\le c_{p,t}+\delta_t,\qquad \forall e\in E_t,\ \forall p\in S_t,
-\end{equation}
-where $\delta_t\ge 0$ is a slack variable to absorb ties or anomalies.
-\emph{Justification:} This is the mathematical translation of the ``lowest combined score is eliminated'' rule. Slack is introduced only when necessary (e.g., multi-elimination weeks with tight orderings).
-
-\textbf{Assumption 6 (Judges' Save Preference):} \label{ass:judges_save}
+\textbf{Assumption 4 (Judges' Save Preference):} \label{ass:judges_save}
 When judges select from the bottom two contestants $\{e, b\}$ (Seasons 28--34), they probabilistically favor saving the contestant with higher judge scores:
 \begin{equation}
 \Pr(\text{eliminate } e \mid e, b) = \sigma\left(\kappa(J_{b,t} - J_{e,t})\right),
@@ -216,7 +199,7 @@ where $\sigma(\cdot)$ is the sigmoid function and $\kappa>0$ controls sensitivit
 
 \subsubsection{External Validation Assumptions}
 
-\textbf{Assumption 7 (Google Trends as Attention Proxy):} \label{ass:google_trends}
+\textbf{Assumption 5 (Google Trends as Attention Proxy):} \label{ass:google_trends}
 Public attention to contestants, as measured by Google search trends during competition weeks, serves as an independent validation signal for estimated fan vote shares.
 \emph{Justification:} Prior studies on televised competitions have shown strong correlation between online search activity and voting behavior \cite{GoogleTrendsTV}. While not used as a hard constraint in the base model, Google Trends data can:
 \begin{itemize}
@@ -227,21 +210,17 @@ Public attention to contestants, as measured by Google search trends during comp
 
 \subsubsection{Uncertainty Quantification Assumptions}
 
-\textbf{Assumption 8 (Perturbation Continuity):}
+\textbf{Assumption 6 (Perturbation Continuity):}
 Small perturbations in judge scores ($J_{i,t}\to J_{i,t}+\epsilon_{i,t}$) induce bounded changes in estimated fan votes, allowing ensemble-based uncertainty quantification.
 \emph{Justification:} If the inverse problem were extremely ill-posed, tiny noise would cause unbounded solution variation. Our ensemble experiments (Section~\ref{sec:certainty}) confirm finite sensitivity, validating this assumption.
 
-\textbf{Assumption 9 (Independence of Perturbations):}
+\textbf{Assumption 7 (Independence of Perturbations):}
 Judge score errors $\epsilon_{i,t}$ are independent across contestants and weeks.
 \emph{Justification:} This simplifies ensemble construction. In reality, judges may exhibit systematic biases, but modeling such correlations is beyond the scope of this inverse problem framework.
 
 \subsubsection{Optimization Assumptions}
 
-\textbf{Assumption 10 (Convexity for Percent Seasons):}
-The elimination constraints in Percent seasons (Eq.~\ref{eq:percent_hard}) define a convex feasible region when combined with simplex constraints.
-\emph{Justification:} Convexity guarantees global optimality of the solution and computational tractability via standard solvers (e.g., CVXPY \cite{Boyd2004}).
-
-\textbf{Assumption 11 (Hierarchical Objective Prioritization):}
+\textbf{Assumption 8 (Hierarchical Objective Prioritization):}
 Consistency with eliminations takes absolute priority over smoothness and entropy:
 \begin{enumerate}
     \item \textbf{Stage 1:} Minimize slack $\sum_t \delta_t$ to achieve maximum consistency.
