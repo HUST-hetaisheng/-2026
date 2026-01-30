@@ -158,7 +158,7 @@ def get_season_data(df, season):
 # ============================================================================
 
 def estimate_votes_percent_season(weekly_data, final_ranking, max_week, final_placements,
-                                   alpha=0.1, beta=0.5, tau=20.0, n_ensemble=50):
+                                   alpha=0.1, beta=0.5, tau=20.0, n_ensemble=20):
     """
     Estimate fan votes for Percent seasons using MAP estimation with:
     - Soft elimination constraints
@@ -347,7 +347,7 @@ def estimate_votes_percent_season(weekly_data, final_ranking, max_week, final_pl
 # ============================================================================
 
 def estimate_votes_rank_season(weekly_data, final_ranking, max_week, final_placements,
-                                lambda_param=0.5, n_ensemble=50):
+                                lambda_param=0.5, n_ensemble=20):
     """
     Estimate fan votes for Rank seasons with proper constraint handling:
     - Eliminated contestant must have WORST combined rank (highest c_i)
@@ -582,15 +582,13 @@ def estimate_votes_rank_season(weekly_data, final_ranking, max_week, final_place
                     fan_ranks[idx] = rank
                     
             else:
-                if prev_fan_ranks_k is not None:
-                    fan_ranks = prev_fan_ranks_k.copy()
-                    fan_ranks += np.random.choice([-1, 0, 1], n)
-                    fan_ranks = np.clip(fan_ranks, 1, n)
-                else:
-                    j_order = np.argsort(-J)
-                    fan_ranks = np.zeros(n)
-                    for rank, idx in enumerate(j_order, 1):
-                        fan_ranks[idx] = rank
+                # No elimination week: use judge order with perturbation
+                j_order = np.argsort(-J)
+                fan_ranks = np.zeros(n)
+                for rank, idx in enumerate(j_order, 1):
+                    fan_ranks[idx] = rank
+                fan_ranks = fan_ranks + np.random.uniform(-0.3, 0.3, size=n)
+                fan_ranks = np.clip(fan_ranks, 1, n)
             
             v = np.exp(-lambda_k * (fan_ranks - 1))
             v = v / v.sum()
@@ -609,7 +607,7 @@ def estimate_votes_rank_season(weekly_data, final_ranking, max_week, final_place
 # ============================================================================
 
 def estimate_votes_bottom2_season(weekly_data, final_ranking, max_week, final_placements,
-                                   lambda_param=0.5, n_ensemble=50):
+                                   lambda_param=0.5, n_ensemble=20):
     """
     Estimate fan votes for Bottom2 + Judges Save seasons.
     Key constraint: eliminated must be in bottom 2 by combined ranks,
@@ -848,15 +846,13 @@ def estimate_votes_bottom2_season(weekly_data, final_ranking, max_week, final_pl
                     fan_ranks[idx] = rank
                     
             else:
-                if prev_fan_ranks_k is not None:
-                    fan_ranks = prev_fan_ranks_k.copy()
-                    fan_ranks += np.random.choice([-1, 0, 1], n)
-                    fan_ranks = np.clip(fan_ranks, 1, n)
-                else:
-                    j_order = np.argsort(-J)
-                    fan_ranks = np.zeros(n)
-                    for rank, idx in enumerate(j_order, 1):
-                        fan_ranks[idx] = rank
+                # No elimination week: use judge order with perturbation
+                j_order = np.argsort(-J)
+                fan_ranks = np.zeros(n)
+                for rank, idx in enumerate(j_order, 1):
+                    fan_ranks[idx] = rank
+                fan_ranks = fan_ranks + np.random.uniform(-0.3, 0.3, size=n)
+                fan_ranks = np.clip(fan_ranks, 1, n)
             
             v = np.exp(-lambda_k * (fan_ranks - 1))
             v = v / v.sum()

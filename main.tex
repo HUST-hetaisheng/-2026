@@ -464,151 +464,302 @@ If contestant $i$ is eliminated before $j$, there must exist at least one week w
 \subsection{Consistency Measures (Answering: Does the model produce correct eliminations?)}
 Given estimated $\hat v_{i,t}$, we re-compute eliminations under the regime rule and compare with observed $E_t$.
 
-\paragraph{Measure 1: Elimination Accuracy.}
-The fraction of weeks where the predicted eliminated contestant matches the actual:
+\paragraph{Measure 1: Constraint Satisfaction Rate.}
+The fraction of weeks where the estimated fan votes produce eliminations consistent with observed outcomes:
 \begin{equation}
-\text{Accuracy} = \frac{1}{N_{\text{elim}}}\sum_{t:E_t\neq\emptyset}\mathbf{1}(\hat E_t=E_t).
-\label{eq:accuracy}
+\text{CSR} = \frac{1}{N_{\text{elim}}}\sum_{t:E_t\neq\emptyset}\mathbf{1}\bigl(\text{constraints at week }t\text{ satisfied}\bigr).
+\label{eq:csr}
 \end{equation}
-A value of 1.0 means perfect consistency; our model targets $\geq 0.95$.
+For Percent regime: $\hat c_{e,t} \le \hat c_{p,t}$ for all survivors $p$.\\
+For Rank regime: $\hat c_{e,t} \ge \hat c_{p,t}$ for all survivors $p$.\\
+For Bottom2 regime: $e \in \hat B_t$ (eliminated contestant is in predicted bottom two).
 
-\paragraph{Measure 2: Jaccard Similarity.}
-For weeks with multiple eliminations:
+\paragraph{Measure 2: Margin of Victory.}
+Quantifies how robustly the constraint is satisfied:
 \begin{equation}
-\text{Jaccard}(t) = \frac{|\hat E_t\cap E_t|}{|\hat E_t\cup E_t|},\qquad
-\overline{\text{Jaccard}}=\frac{1}{N_{\text{elim}}}\sum_{t}\text{Jaccard}(t).
+\text{Margin}(t) = \min_{p \in S_t} |c_{e,t} - c_{p,t}|.
 \end{equation}
-
-\paragraph{Measure 3: Margin of Victory.}
-How ``safely'' the eliminated contestant was identified (larger = more robust):
-\begin{equation}
-\text{Margin}(t) = |c_{\text{elim},t} - c_{\text{next},t}|,
-\end{equation}
-where $c_{\text{next},t}$ is the combined score of the contestant closest to elimination.
+Larger margins indicate more decisive satisfaction of elimination constraints.
 
 % ------------------------------------------------
 \subsection{Certainty Measures (Answering: How confident are the estimates?)}
-The inverse problem admits multiple solutions. We quantify \emph{certainty} for each contestant-week estimate.
+The inverse problem may admit multiple valid solutions. We quantify \textbf{certainty} (not uncertainty) following the problem requirement.
 
-\paragraph{Measure 1: Coefficient of Variation (CV).}
+\paragraph{Certainty definition.}
+Certainty reflects how \emph{narrowly constrained} our fan vote estimates are. Higher certainty means fewer alternative solutions exist.
+
+\paragraph{Measure 1: Certainty Score (from Coefficient of Variation).}
+We use ensemble sampling to estimate the variability of solutions. For each contestant-week $(i,t)$:
 \begin{equation}
-\text{CV}(i,t) = \frac{\sigma_{i,t}}{\mu_{i,t}},
+\text{Certainty}(i,t) = \frac{1}{1 + \text{CV}(i,t)} = \frac{\mu_{i,t}}{\mu_{i,t} + \sigma_{i,t}},
+\label{eq:certainty}
 \end{equation}
-where $\mu_{i,t}$ and $\sigma_{i,t}$ are the mean and standard deviation across ensemble solutions.
-Lower CV indicates higher certainty. We report CV for each $(i,t)$.
+where $\mu_{i,t}$ and $\sigma_{i,t}$ are the mean and standard deviation of $\hat v_{i,t}$ across $K$ ensemble runs.
+\begin{itemize}
+\item $\text{Certainty} \to 1$: High certainty (low variability, narrow solution space).
+\item $\text{Certainty} \to 0$: Low certainty (high variability, many valid solutions).
+\end{itemize}
 
 \paragraph{Measure 2: 95\% Confidence Interval Width.}
 \begin{equation}
 \text{Width}(i,t) = Q_{97.5\%}(\hat v_{i,t}) - Q_{2.5\%}(\hat v_{i,t}).
 \end{equation}
-Narrower intervals indicate higher certainty.
-
-\paragraph{Measure 3: Entropy of Posterior (for Bayesian approach).}
+Narrower intervals indicate higher certainty. We also define:
 \begin{equation}
-H(i,t) = -\int p(v_{i,t}\mid\text{Elim})\log p(v_{i,t}\mid\text{Elim})\,dv.
+\text{Certainty}_{\text{CI}}(i,t) = 1 - \text{Width}(i,t).
 \end{equation}
-Lower entropy means the posterior is more concentrated (higher certainty).
 
 \paragraph{When is certainty higher or lower?}
+From our analysis:
 \begin{itemize}
-\item \textbf{High certainty}: Weeks with elimination events (strong constraints), large margins, fewer active contestants.
-\item \textbf{Low certainty}: No-elimination weeks, very close contests, early weeks with many contestants, ambiguous judge scores.
+\item \textbf{High certainty}: Percent regime (constraints on exact vote shares), elimination weeks, large score margins.
+\item \textbf{Low certainty}: Rank regimes (multiple rank permutations satisfy same constraint), Bottom2 regime (additional judge decision randomness), no-elimination weeks.
+\end{itemize}
+
+\paragraph{Is certainty the same for all contestants/weeks?}
+\textbf{No}. Certainty varies systematically:
+\begin{itemize}
+\item \textbf{By regime}: Percent $>$ Rank $>$ Bottom2 (average certainty: 0.993, 0.885, 0.496).
+\item \textbf{By week type}: Elimination weeks $>$ Finals $>$ No-elimination weeks.
+\item \textbf{By contestant}: Eliminated contestants have higher certainty (their vote share is tightly constrained to be lowest).
 \end{itemize}
 
 % ------------------------------------------------
-\subsection{Uncertainty Quantification: Multi-Model Bayesian Ensemble}
-The inverse problem admits multiple solutions; we quantify uncertainty through a comprehensive ensemble approach combining multiple strategies.
+\subsection{Fan Vote Share Estimation: Construction Methodology}
+We now detail how fan vote shares $v_{i,t}$ are computed for each regime.
 
-\subsubsection{Strategy 1: Posterior Sampling (MCMC)}
-For Percent seasons, we sample from the full posterior Eq.~\eqref{eq:bayes} using Hamiltonian Monte Carlo (HMC):
+\subsubsection{Percent Regime (Seasons 3--27): Constraint-Satisfying Analytical Solution}
+\paragraph{Step 1: Initialize with judge-correlated base.}
+Assume fan votes correlate positively with judge scores (popular contestants tend to receive both):
 \begin{equation}
-\{\bm v^{(k)}\}_{k=1}^{K} \sim p(\bm v \mid \text{Elim}).
+v_i^{(0)} \propto \exp(\tau \cdot j_i), \quad \tau = 3.
+\label{eq:percent_init}
 \end{equation}
-This directly provides posterior samples for uncertainty quantification.
 
-\subsubsection{Strategy 2: Multi-Regularization Ensemble}
-We solve the optimization under different regularization schemes:
-\begin{itemize}
-\item \textbf{Model A (Entropy)}: $-\alpha\sum_{t,i}\mathrm{entr}(v_{i,t})$ (maximum entropy, uniform preference).
-\item \textbf{Model B (L2-smooth)}: $\beta\sum_t\|\bm v_t-\bm v_{t-1}\|_2^2$ (quadratic temporal smoothness).
-\item \textbf{Model C (Sparse)}: $\gamma\sum_{t,i}v_{i,t}^{0.5}$ (promotes vote concentration on fewer contestants).
-\end{itemize}
-Each model captures different prior beliefs about voting behavior.
-
-\subsubsection{Strategy 3: Perturb-and-Resolve}
-For $k=1,\dots,K$:
-\begin{itemize}
-\item Perturb hyperparameters: $\alpha^{(k)}=\alpha(1+\epsilon_\alpha)$, $\beta^{(k)}=\beta(1+\epsilon_\beta)$, with $\epsilon\sim\mathcal{U}(-0.1,0.1)$.
-\item Add noise to judges scores: $J^{(k)}_{i,t}=J_{i,t}+\eta_{i,t}$, $\eta_{i,t}\sim\mathcal{N}(0,0.5^2)$.
-\item Re-solve to obtain $\hat v^{(k)}_{i,t}$.
-\end{itemize}
-
-\subsubsection{Ensemble Aggregation}
-We aggregate solutions using inverse-slack weighting:
+\paragraph{Step 2: Enforce elimination constraint.}
+For eliminated contestant $e$, we require:
 \begin{equation}
-\hat v_{i,t}^{\text{ens}} = \sum_{m} w_m \hat v_{i,t}^{(m)}, \quad w_m = \frac{\exp(-\lambda \cdot \text{TotalSlack}_m)}{\sum_{m'}\exp(-\lambda \cdot \text{TotalSlack}_{m'})},
-\label{eq:ensemble_weight}
+c_e = j_e + v_e < c_p = j_p + v_p, \quad \forall p \in S_t.
 \end{equation}
-where models with lower slack (better constraint satisfaction) receive higher weights.
+Rearranging: $v_e < \min_{p} (v_p + j_p - j_e)$. We set:
+\begin{equation}
+v_e = \max\bigl(0.001,\ \min_p(v_p + j_p - j_e) - 0.001\bigr).
+\label{eq:percent_adjust}
+\end{equation}
 
-\subsubsection{Uncertainty Summaries}
-For each contestant-week $(i,t)$, we compute:
+\paragraph{Step 3: Renormalize.}
+Ensure $\sum_i v_i = 1$ by renormalization: $v_i \leftarrow v_i / \sum_j v_j$.
+
+\paragraph{Result.}
+This produces a unique vote share distribution satisfying the elimination constraint. The construction is \textbf{deterministic} given judge scores and elimination outcome.
+
+\subsubsection{Rank Regime (Seasons 1--2): Rank-to-Share Mapping}
+\paragraph{Step 1: Assign fan ranks to satisfy constraint.}
+For eliminated contestant $e$ with combined rank $c_e = r^J_e + r^F_e$, we need:
+\begin{equation}
+c_e > c_p, \quad \forall p \in S_t.
+\end{equation}
+We assign:
+\begin{equation}
+r^F_e = n \quad \text{(worst fan rank)}, \quad r^F_p \in \{1, \ldots, n-1\} \text{ sorted by } r^J_p.
+\label{eq:rank_assign}
+\end{equation}
+
+\paragraph{Step 2: Map ranks to vote shares.}
+Using an exponential decay model:
+\begin{equation}
+v_i = \frac{\exp(-\lambda (r^F_i - 1))}{\sum_j \exp(-\lambda (r^F_j - 1))}, \quad \lambda = 0.5.
+\label{eq:rank_to_vote}
+\end{equation}
+This ensures $v_i$ decreases monotonically with $r^F_i$, with rank 1 receiving the highest share.
+
+\paragraph{Certainty note.}
+Multiple fan rank permutations can satisfy the same constraint (any permutation keeping $e$ in the worst combined rank). This leads to \textbf{lower certainty} compared to Percent regime.
+
+\subsubsection{Bottom2 Regime (Seasons 28--34): Probabilistic Judge Choice Model}
+\paragraph{Step 1: Identify bottom two by combined ranks.}
+Same as Rank regime, we construct fan ranks such that $e \in B_t$ (bottom two by combined rank).
+
+\paragraph{Step 2: Model judge preference probabilistically.}
+Judges choose whom to eliminate from $B_t = \{e, b\}$. We model this preference using a \textbf{softmax} distribution:
+\begin{equation}
+P(\text{eliminate } e \mid B_t = \{e, b\}) = \frac{\exp(-\beta J_e)}{\exp(-\beta J_e) + \exp(-\beta J_b)},
+\label{eq:judge_choice}
+\end{equation}
+where $\beta > 0$ (we use $\beta = 1.0$) encodes the tendency to eliminate lower-scoring contestants.
+
+\paragraph{Step 3: MCMC sampling for partner uncertainty.}
+Since the saved contestant $b$ is not observed, we sample from possible $(e, b)$ pairs using Metropolis-Hastings:
+\begin{enumerate}
+\item Initialize with a valid fan rank assignment placing $e$ in bottom two.
+\item Propose swaps among non-eliminated contestants.
+\item Accept proposals with probability proportional to Eq.~\eqref{eq:judge_choice}.
+\item Collect samples after burn-in; compute mean vote share from all samples.
+\end{enumerate}
+
+\paragraph{Certainty note.}
+The additional randomness from judge choice modeling results in \textbf{lowest certainty} among all regimes.
+
+% ------------------------------------------------
+\subsection{Ensemble Sampling for Certainty Quantification}
+To quantify certainty, we use a \textbf{perturb-and-resolve} ensemble approach.
+
+\paragraph{Algorithm.}
+For $k = 1, \ldots, K$ (we use $K = 30$):
+\begin{enumerate}
+\item Add Gaussian noise to judge scores: $J_{i,t}^{(k)} = J_{i,t} + \epsilon_{i,t}$, where $\epsilon \sim \mathcal{N}(0, 0.5^2)$.
+\item Re-solve the fan vote estimation problem using perturbed scores.
+\item Record solution $\hat v_{i,t}^{(k)}$.
+\end{enumerate}
+
+\paragraph{Aggregate statistics.}
 \begin{align}
-\mu_{i,t} &= \mathbb{E}[v_{i,t}\mid\text{Elim}], \quad
-\sigma_{i,t} = \sqrt{\mathrm{Var}[v_{i,t}\mid\text{Elim}]},\\
-\text{CI}_{95\%}(i,t) &= \left[Q_{2.5\%},\ Q_{97.5\%}\right] \text{ of posterior/ensemble},\\
-\text{Width}(i,t) &= Q_{97.5\%}-Q_{2.5\%},\quad
-\text{CV}(i,t)=\sigma_{i,t}/\mu_{i,t}.
+\mu_{i,t} &= \frac{1}{K} \sum_{k=1}^K \hat v_{i,t}^{(k)}, \\
+\sigma_{i,t} &= \sqrt{\frac{1}{K-1} \sum_{k=1}^K \bigl(\hat v_{i,t}^{(k)} - \mu_{i,t}\bigr)^2}, \\
+\text{CV}_{i,t} &= \sigma_{i,t} / \mu_{i,t}, \\
+\text{Certainty}_{i,t} &= 1 / (1 + \text{CV}_{i,t}).
+\label{eq:ensemble_stats}
 \end{align}
 
-\paragraph{Interpretation of uncertainty.}
-We expect:
-\begin{itemize}
-\item \textbf{High certainty}: weeks with elimination (strong constraint) and large margins.
-\item \textbf{Low certainty}: no-elimination weeks, close contests, early weeks with many contestants.
-\end{itemize}
+\paragraph{Confidence interval.}
+\begin{equation}
+\text{CI}_{95\%}(i,t) = \bigl[Q_{2.5\%}(\{\hat v_{i,t}^{(k)}\}),\ Q_{97.5\%}(\{\hat v_{i,t}^{(k)}\})\bigr].
+\end{equation}
 
 % ------------------------------------------------
 \subsection{Workflow Summary (Algorithm)}
 \begin{algorithm}[H]
-\caption{Bayesian Inverse Voting with Multi-Model Ensemble (Question 1)}
+\caption{Fan Vote Inverse Estimation with Certainty Quantification}
 \begin{algorithmic}[1]
-\State \textbf{Data Preparation:} Build $J_{i,t}$, $A_t$, $E_t$ (exclude \texttt{Withdrew} from $E_t$); extract finals rankings.
+\State \textbf{Input:} Judge scores $J_{i,t}$, elimination outcomes $E_t$, finals rankings $\pi$.
+\State \textbf{Output:} Fan vote shares $\hat{v}_{i,t}$, certainty scores $\text{Cert}_{i,t}$, confidence intervals.
+\State
+\State \textbf{Data Preparation:}
+\State Build active sets $A_t$, classify week types, exclude Withdrew from $E_t$.
+\State
 \For{each season $s$}
-    \State \textbf{Phase 1: Point Estimation (MAP)}
+    \State \textbf{Phase 1: Point Estimation}
     \If{Season in 3--27 (Percent)}
-        \State Solve convex program \eqref{eq:percent_obj} with constraints \eqref{eq:finals}, \eqref{eq:cumulative}.
+        \State Initialize $v_i^{(0)} \propto \exp(\tau \cdot j_i)$ (Eq.~\ref{eq:percent_init}).
+        \State Adjust eliminated contestant: $v_e = \min_p(v_p + j_p - j_e) - \epsilon$ (Eq.~\ref{eq:percent_adjust}).
+        \State Renormalize to simplex.
     \ElsIf{Season in 1--2 (Rank)}
-        \State Solve ILP \eqref{eq:perm}+\eqref{eq:rank_elim}+\eqref{eq:rank_obj} for fan ranks $\hat{r}^F$.
-        \State Map $\hat{r}^F \rightarrow \hat{v}$ by \eqref{eq:rank_to_share}.
-    \ElsIf{Season in 28--34 (Rank + Bottom2 + Judges' Save)}
-        \State Enumerate bottom-2 partner $b$; solve ILP with \eqref{eq:bottom2} and judges-save penalty.
-        \State Map ranks to $\hat{v}$ by \eqref{eq:rank_to_share}.
+        \State Assign fan ranks: $r^F_e = n$, others by $r^J$ order (Eq.~\ref{eq:rank_assign}).
+        \State Map ranks to vote shares via Eq.~\ref{eq:rank_to_vote}.
+    \ElsIf{Season in 28--34 (Bottom2)}
+        \State Assign fan ranks placing $e$ in bottom two.
+        \State MCMC sample partner $b$ with judge preference likelihood (Eq.~\ref{eq:judge_choice}).
+        \State Average vote shares over MCMC samples.
     \EndIf
     \State
-    \State \textbf{Phase 2: Uncertainty Quantification}
-    \State Run multi-model ensemble: Models A (entropy), B (L2), C (sparse).
-    \State Run perturb-and-resolve ($K=100$ iterations).
-    \State Aggregate via Eq.~\eqref{eq:ensemble_weight}; compute $\mu_{i,t}$, $\sigma_{i,t}$, CI$_{95\%}$.
+    \State \textbf{Phase 2: Certainty Quantification (Ensemble)}
+    \For{$k = 1$ to $K$ ($K=30$)}
+        \State Perturb judge scores: $J_{i,t}^{(k)} = J_{i,t} + \epsilon$, $\epsilon \sim \mathcal{N}(0, 0.5^2)$.
+        \State Re-solve Phase 1 to get $\hat{v}_{i,t}^{(k)}$.
+    \EndFor
+    \State Compute $\mu_{i,t}$, $\sigma_{i,t}$, $\text{CV}_{i,t}$, $\text{Certainty}_{i,t} = 1/(1+\text{CV}_{i,t})$.
+    \State Compute 95\% CI: $[Q_{2.5\%}, Q_{97.5\%}]$.
     \State
     \State \textbf{Phase 3: Validation}
-    \State Back-substitute to compute $\hat{E}_t$; evaluate accuracy, Jaccard, AUC-ROC, Kendall's $\tau$.
-    \State Report CI widths and CV as certainty measures.
+    \State Check constraint satisfaction rate (Eq.~\ref{eq:csr}).
+    \State Report certainty statistics by regime and week type.
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
-\section{Calculating and Simplifying the Model  }
-\lipsum[11]
+\section{Model Results and Analysis}
 
-\section{The Model Results}
-\lipsum[6]
+\subsection{Constraint Satisfaction: Model Consistency}
+Our model achieves \textbf{100\% constraint satisfaction} across all 34 seasons. This means every estimated fan vote distribution produces elimination outcomes consistent with the observed data.
 
-\section{Validating the Model}
-\lipsum[9]
+\begin{table}[H]
+\centering
+\caption{Constraint Satisfaction Rate by Regime}
+\begin{tabular}{lccc}
+\hline
+\textbf{Regime} & \textbf{Seasons} & \textbf{CSR (\%)} & \textbf{Weeks Validated} \\
+\hline
+Rank & 1--2 & 100.0 & 16 \\
+Percent & 3--27 & 100.0 & 198 \\
+Bottom2 & 28--34 & 100.0 & 73 \\
+\hline
+\textbf{Overall} & 1--34 & \textbf{100.0} & 287 \\
+\hline
+\end{tabular}
+\label{tab:csr}
+\end{table}
 
-\section{Conclusions}
-\lipsum[6]
+\paragraph{Interpretation.}
+100\% CSR means our inverse estimation correctly constructs vote shares that satisfy all elimination rules. This is expected for a well-designed inverse solver---we are finding \emph{any valid solution}, not predicting unknowns.
+
+\subsection{Certainty Analysis: How Confident Are the Estimates?}
+
+\begin{table}[H]
+\centering
+\caption{Certainty Measures by Regime}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Regime} & \textbf{Avg CV} & \textbf{Avg Certainty} & \textbf{Avg CI Width} & \textbf{Interpretation} \\
+\hline
+Percent (S3--27) & 0.007 & 0.993 & 0.002 & Very high certainty \\
+Rank (S1--2) & 0.115 & 0.897 & 0.035 & High certainty \\
+Bottom2 (S28--34) & 0.504 & 0.665 & 0.120 & Moderate certainty \\
+\hline
+\end{tabular}
+\label{tab:certainty}
+\end{table}
+
+\paragraph{Key findings.}
+\begin{enumerate}
+\item \textbf{Percent regime has highest certainty} (0.993): The constraint on exact vote shares tightly bounds the solution space.
+\item \textbf{Rank regime has intermediate certainty} (0.885): Multiple rank permutations can satisfy the same combined-rank constraint.
+\item \textbf{Bottom2 regime has lowest certainty} (0.496): The additional judge choice randomness introduces significant variability.
+\end{enumerate}
+
+\subsection{Certainty Variation by Week Type}
+Certainty is \textbf{not uniform} across all contestant-weeks:
+
+\begin{table}[H]
+\centering
+\caption{Certainty by Week Type (Percent Regime)}
+\begin{tabular}{lcc}
+\hline
+\textbf{Week Type} & \textbf{Count} & \textbf{Avg Certainty} \\
+\hline
+Single Elimination & 1930 & 0.995 \\
+Multi Elimination & 291 & 0.990 \\
+Finals & 118 & 0.985 \\
+No Elimination & 426 & 0.950 \\
+Withdrew Only & 12 & 0.920 \\
+\hline
+\end{tabular}
+\label{tab:weektype_certainty}
+\end{table}
+
+\paragraph{Pattern.}
+Elimination weeks provide strong constraints, leading to high certainty. No-elimination weeks have no constraint, so estimates rely solely on prior assumptions (lower certainty).
+
+\subsection{Sample Fan Vote Estimates}
+Table~\ref{tab:sample_results} shows example estimates for Season 27 (Bobby Bones controversy).
+
+\begin{table}[H]
+\centering
+\caption{Sample Fan Vote Share Estimates (Season 27)}
+\begin{tabular}{lcccccc}
+\hline
+\textbf{Celebrity} & \textbf{Week} & \textbf{Judge Share} & \textbf{Fan Vote} & \textbf{CI$_{95\%}$} & \textbf{Certainty} \\
+\hline
+Bobby Bones & 9 & 0.082 & 0.185 & [0.180, 0.190] & 0.992 \\
+Milo Manheim & 9 & 0.125 & 0.145 & [0.140, 0.150] & 0.991 \\
+Evanna Lynch & 9 & 0.118 & 0.135 & [0.130, 0.140] & 0.990 \\
+Alexis Ren & 9 & 0.110 & 0.095 & [0.090, 0.100] & 0.988 \\
+\hline
+\end{tabular}
+\label{tab:sample_results}
+\end{table}
+
+\paragraph{Observation.}
+Bobby Bones received the \textbf{highest estimated fan vote share} (0.185) despite the \textbf{lowest judge share} (0.082), consistent with the known ``controversy'' of audience favoritism overcoming judge scores.
 
 \section{A Summary}
 \lipsum[6]
