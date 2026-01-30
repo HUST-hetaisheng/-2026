@@ -143,25 +143,6 @@ judges’ scores and fan votes is proposed and evaluated to determine whether it
 
 \subsection{Model Assumptions}
 
-\subsection{Notations}
-
-\subsection{Data Processing}
-
-
-% ============================================
-% Full modeling for Question 1 (all seasons)
-% ============================================
-
-\section{Model: Inverse Estimation of Fan Votes}
-
-\subsection{Problem Framing}
-The core challenge of Question 1 is an \emph{inverse problem}: fan vote totals are not publicly available, 
-yet the observed eliminations place constraints on what the votes could have been. We seek weekly fan vote 
-shares $f_{i,t}$ that are \emph{consistent} with the stated elimination rule while encoding minimal behavioral 
-assumptions.
-
-\subsection{Model Assumptions}
-
 To construct a mathematically rigorous inverse estimation model, we adopt the following assumptions, categorized by their nature and justification.
 
 \subsubsection{Fan Vote Behavior Assumptions}
@@ -228,14 +209,22 @@ Consistency with eliminations takes absolute priority over smoothness and entrop
 \end{enumerate}
 \emph{Justification:} The primary goal is to \emph{explain} observed eliminations. Behavioral regularization (smoothness, entropy) is secondary and serves only as a tie-breaker when multiple solutions achieve equal consistency.
 
-\subsubsection{Summary of Assumption Validity}
+\subsection{Notations}
 
-The assumptions above are justified by:
-\begin{itemize}
-    \item \textbf{Empirical evidence:} Rule documentation \cite{WikiDWTS}, Google Trends correlation studies.
-    \item \textbf{Mathematical necessity:} Convexity, simplex constraints, maximum entropy are standard in inverse problems \cite{Jaynes1957, Boyd2004}.
-    \item \textbf{Model diagnostics:} High CSR (Table~\ref{tab:csr}) and bounded uncertainty (Table~\ref{tab:certainty}) confirm that assumptions are not contradicted by data.
-\end{itemize}
+\subsection{Data Processing}
+
+
+% ============================================
+% Full modeling for Question 1 (all seasons)
+% ============================================
+
+\section{Model: Inverse Estimation of Fan Votes}
+
+\subsection{Problem Framing}
+The core challenge of Question 1 is an \emph{inverse problem}: fan vote totals are not publicly available, 
+yet the observed eliminations place constraints on what the votes could have been. We seek weekly fan vote 
+shares $f_{i,t}$ that are \emph{consistent} with the stated elimination rule while encoding minimal behavioral 
+assumptions.
 
 \subsection{Data Preparation and Notation}
 Let $J_{i,t}$ be contestant $i$'s total judges score in week $t$ (sum of available judges; missing values ignored).
