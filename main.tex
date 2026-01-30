@@ -61,36 +61,39 @@ inverse problem; fan vote estimation; convex optimization; DWTS; certainty quant
 \newpage%% ===========================================
 
 \section{Introduction}
+\subsection{Background}
 
-%% ===========================================\subsection{Background}
-
-\section{Introduction}Variety entertainment has become an indispensable spice of modern life, with various emerging shows continuing to emerge, and competition in the global variety entertainment industry has become increasingly fierce. In an era of such frequent iteration of variety IPs, Dancing with the Stars (DWTS), the American version of an international television franchise, has firmly established itself. Having completed 34 seasons with audiences spanning numerous countries worldwide, it has evolved into a benchmark variety show renowned for both its reputation and popularity.
-
-%% ===========================================\begin{figure}[H]
-
+DWTS (Dancing with the Stars) is a popular television competition where celebrity contestants are paired with professional dancers to compete in weekly dance performances. Elimination and advancement results are determined by combining judges' scores and audience votes. The judges assess technical proficiency, which can be subjective, while fan votes are influenced by factors such as celebrity popularity and charisma. As a result, the competition's outcomes have often sparked discussions and controversies, despite the show's attempts to improve the integration of these two elements. In recent years, with increasing audience concerns about fairness in competitive variety shows, DWTS faces a critical need for a fair, impartial, and effective scoring system. This system must ensure both the program's entertainment value and the confidentiality of fan votes, securing a balance between professionalism and popularity. This is essential for DWTS to maintain its viewership and grow its brand in future seasons.
+\begin{figure}[H]
     \centering
-
-\subsection{Background}    \includegraphics[width=0.5\linewidth]{figures/dwtc背景图.png}
-
-Dancing with the Stars (DWTS) is a long-running American television franchise that has completed 34 seasons. Celebrity contestants are paired with professional dancers and compete through weekly dance performances. Results are determined by combining professional judges' scores with audience votes. However, fan vote totals are never publicly disclosed, creating an interesting inverse problem: can we estimate fan votes from observed elimination outcomes?    \caption{Dancing with the Stars poster season33}
-
+    \includegraphics[width=0.4\linewidth]{figures/dwtc背景图.png}
+    \caption{Dancing with the Stars poster}
     \label{fig:placeholder}
+\end{figure}
 
-\subsection{Problem Overview}\end{figure}
 
-We address four questions:DWTS features celebrity contestants paired with professional dancers, who compete through weekly dance performances. Elimination and advancement results are determined by combining professional judges' scores and audience votes. Since judges' judgment criteria for dance technical proficiency are often subjective, and fan votes are susceptible to non-technical factors such as celebrity popularity and personal charisma, the final results of the competition have always been mired in constant discussions and controversies—even as the program team has repeatedly attempted new methods of integrating judges' scores and fan votes.In recent years, as audiences have paid increasing attention to the fairness of competitive variety shows, DWTS is in urgent need of a fair, impartial, and effective scoring mechanism. This mechanism must ensure the program's viewership and entertainment value while maintaining the strict confidentiality of fan votes, thereby achieving the dual guarantee of professionalism and popularity. This will serve as a key measure for DWTS to attract audiences and continuously enhance its IP influence in future seasons.
+\subsection{Restatement of the Problem}
 
-\begin{enumerate}\subsection{Restatement of the Problem}
+Given the background information and available data, this study addresses the following tasks.
 
-    \item Estimate fan vote totals for all contestants across 34 seasons.
+\textbf{Task 1: Fan Vote Estimation.}
+\textbf{1.1}\quad Construct a model to estimate weekly fan votes using judges’ scores, elimination outcomes, and contestant data.  
+\textbf{1.2}\quad Evaluate the consistency of the estimates by testing whether they reproduce the observed weekly eliminations.  
+\textbf{1.3}\quad Quantify the uncertainty of the estimated fan votes and examine whether it varies across contestants or weeks.
 
-    \item Quantify \emph{certainty} in these estimates.Follow our WeChat official account for more LaTeX materials and information.
+\textbf{Task 2: Comparison of Vote Combination and Elimination Rules.}
+\textbf{2.1}\quad Compare the rank-based and percentage-based vote combination methods across seasons and analyze potential biases.  
+\textbf{2.2}\quad Evaluate the impact of alternative elimination procedures, including judges selecting from the bottom two contestants.  
+\textbf{2.3}\quad Recommend an appropriate combination and elimination approach for future seasons with justification.
 
-    \item Analyze whether certainty varies by contestant or week.
+\textbf{Task 3: Impact of Contestant and Partner Characteristics.}
+\textbf{3.1}\quad Assess the influence of professional dancer traits and celebrity characteristics on overall performance and final results.  
+\textbf{3.2}\quad Compare the effects of these factors on judges’ scores versus fan votes.
 
-    \item Evaluate rule fairness and recommend improvements.\centerline{\includegraphics[width=5cm]{qrcodewechat}}
+\textbf{Task 4: Alternative Scoring System.}
+\textbf{4.1}\quad Design an alternative method for combining judges’ scores and fan votes.  
+\textbf{4.2}\quad Demonstrate that the proposed system is more fair or otherwise improves the competition.
 
-\end{enumerate}
 
 \subsection{Syntax (how to type \LaTeX\ commands --- these
 
