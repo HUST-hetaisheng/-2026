@@ -82,11 +82,56 @@ Variety entertainment has become an indispensable spice of modern life, with var
     \label{fig:placeholder}
 \end{figure}
 DWTS features celebrity contestants paired with professional dancers, who compete through weekly dance performances. Elimination and advancement results are determined by combining professional judges' scores and audience votes. Since judges' judgment criteria for dance technical proficiency are often subjective, and fan votes are susceptible to non-technical factors such as celebrity popularity and personal charisma, the final results of the competition have always been mired in constant discussions and controversies—even as the program team has repeatedly attempted new methods of integrating judges' scores and fan votes.In recent years, as audiences have paid increasing attention to the fairness of competitive variety shows, DWTS is in urgent need of a fair, impartial, and effective scoring mechanism. This mechanism must ensure the program's viewership and entertainment value while maintaining the strict confidentiality of fan votes, thereby achieving the dual guarantee of professionalism and popularity. This will serve as a key measure for DWTS to attract audiences and continuously enhance its IP influence in future seasons.
+
+% \subsection{Restatement of the Problem}
+% Given the background information, data, and constraints of the problem, the following tasks are addressed:
+
+% \textbf{Task 1.} Build a model to estimate the weekly fan vote counts of each contestant during the competition. This model should include an assessment of estimation certainty and verify the consistency of the results.
+% \textit{Task 1.1} Leverage the model established in Task 1, together with the estimated fan vote data, to:
+% \begin{itemize}
+%   \item Compare the performance of the ranking method and the percentage method in integrating judges' and audience votes across seasons; if there are result differences, analyze whether one of the methods is biased toward audience votes.
+%   \item Analyze the performance differences of the two methods in controversial celebrity cases (where judges' opinions diverge from fans'); assess whether the two methods yield the same outcomes for each contestant when combining judges' scores and fan votes, and evaluate the impact of adding the segment where judges select and eliminate the bottom two contestants each week on the final results.
+%   \item Propose a recommended approach for future seasons and explain the rationale.
+% \end{itemize}
+
+% \textbf{Task 2.} Evaluate the impact of different professional dancer traits and celebrity characteristics (e.g., age, industry) on competition results, and analyze whether these factors affect judges' scores and fan votes in distinct ways.
+
+% \textbf{Task 3.} Reflect on the innovations and core insights of the model, and explain how to inform the show's production team with decision-making references.
+
 \subsection{Restatement of the Problem}
 
-Follow our WeChat official account for more LaTeX materials and information.
+Given the background information, available data, and constraints of the problem, this study addresses the following tasks:
 
-\centerline{\includegraphics[width=5cm]{qrcodewechat}}
+\textbf{Task 1: Fan Vote Estimation.}
+Develop a mathematical model to estimate the weekly fan vote totals for each contestant.
+\begin{itemize}
+    \item Construct a model to estimate fan votes using judges’ scores, elimination outcomes, and contestant data.
+    \item Evaluate the consistency of the estimates by testing whether they reproduce the observed weekly eliminations.
+    \item Quantify the uncertainty of the estimated fan votes and examine whether it varies across contestants or weeks.
+\end{itemize}
+
+\textbf{Task 2: Comparison of Vote Combination and Elimination Rules.}
+Using the estimated fan votes, analyze different methods for combining judges’ scores and fan votes, as well as alternative elimination rules.
+\begin{itemize}
+    \item Compare the rank-based and percentage-based vote combination methods across seasons and analyze potential biases.
+    \item Evaluate the impact of alternative elimination procedures, including judges selecting from the bottom two contestants.
+    \item Recommend an appropriate combination and elimination approach for future seasons with justification.
+\end{itemize}
+
+\textbf{Task 3: Impact of Contestant and Partner Characteristics.}
+Analyze how professional dancer traits and celebrity characteristics affect competition outcomes.
+\begin{itemize}
+    \item Assess the influence of these factors on overall performance and final results.
+    \item Compare their effects on judges’ scores versus fan votes.
+\end{itemize}
+
+\textbf{Task 4: Alternative Scoring System.}
+Propose and evaluate a new scoring system based on judges’ scores and fan votes.
+\begin{itemize}
+    \item Design an alternative method for combining judges’ scores and fan votes.
+    \item Demonstrate that the proposed system is more fair or otherwise improves the competition.
+\end{itemize}
+
 
 \subsection{Syntax (how to type \LaTeX\ commands --- these
   are the rules)}
