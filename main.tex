@@ -74,16 +74,14 @@ keyword1; keyword2
 %%
 \section{Introduction}
 \subsection{Background}
-\LaTeX\ is a document preparation system which uses the \TeX\
-typesetting program. It enables you to produce
-publication-quality documents with great accuracy and
-consistency. \LaTeX\ works on any computer and produces
-industry-standard PDF. It is available both in free (open-source)
-and commercial implementations. \LaTeX\ can be used for any kind
-of document, but it is especially suited to those with complex
-structures, repetitive formatting, or notations like
-mathematics. Install the software from
-\url{www.tug.org/texlive/}.
+Variety entertainment has become an indispensable spice of modern life, with various emerging shows continuing to emerge, and competition in the global variety entertainment industry has become increasingly fierce. In an era of such frequent iteration of variety IPs, Dancing with the Stars (DWTS), the American version of an international television franchise, has firmly established itself. Having completed 34 seasons with audiences spanning numerous countries worldwide, it has evolved into a benchmark variety show renowned for both its reputation and popularity.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{figures/dwtc背景图.png}
+    \caption{Dancing with the Stars poster season33}
+    \label{fig:placeholder}
+\end{figure}
+DWTS features celebrity contestants paired with professional dancers, who compete through weekly dance performances. Elimination and advancement results are determined by combining professional judges' scores and audience votes. Since judges' judgment criteria for dance technical proficiency are often subjective, and fan votes are susceptible to non-technical factors such as celebrity popularity and personal charisma, the final results of the competition have always been mired in constant discussions and controversies—even as the program team has repeatedly attempted new methods of integrating judges' scores and fan votes.In recent years, as audiences have paid increasing attention to the fairness of competitive variety shows, DWTS is in urgent need of a fair, impartial, and effective scoring mechanism. This mechanism must ensure the program's viewership and entertainment value while maintaining the strict confidentiality of fan votes, thereby achieving the dual guarantee of professionalism and popularity. This will serve as a key measure for DWTS to attract audiences and continuously enhance its IP influence in future seasons.
 \subsection{Restatement of the Problem}
 
 Follow our WeChat official account for more LaTeX materials and information.
@@ -399,6 +397,7 @@ and judges then choose which of the bottom two leaves.
 \paragraph{Step 1 (Bottom2 by combined ranks).}
 Using the same combined rank $c_{i,t}=r^J_{i,t}+r^F_{i,t}$ (higher value = worse), define bottom-two set $B_t$:
 \begin{equation}
+|B_t|=2,\quad c_{p,t} \le c_{b,t} + \delta_t,\ \ \forall b\in B_t,\ \forall p\in A_t\setminus B_t.
 |B_t|=2,\quad c_{p,t} \le c_{b,t}+\delta_t,\ \ \forall b\in B_t,\ \forall p\in A_t\setminus B_t.
 \label{eq:bottom2}
 \end{equation}
