@@ -298,7 +298,10 @@ In our implementation, we set $K=2$ to align with the standard "Bottom Two" form
 \subsubsection{Solution Algorithm: Stochastic Greedy Swapping}
 Since the rank-based combined score is discrete and non-differentiable, we employ a \textbf{Greedy Swapping Heuristic} (as implemented in our \texttt{enforce\_elimination\_rank} function) to find a feasible fan ranking $\mathbf{r}^F_w$. 
 $\star$ \textbf{Initialization:} The fan ranks are initially set to a prior distribution (e.g., the previous week's ranks or judge-correlated ranks).
-$\star$ \textbf{Violation Identification:} If the observed eliminated contestant $e$ is not within the \text{Bottom}_2 of the combined ranks $\mathbf{R}_w$, the algorithm identifies "offenders"—contestants who are currently in the bottom two but should legally be "safer" than $e$.
+$\star$ \textbf{Violation Identification:} If the observed eliminated contestant $e$ is not
+within the $\text{Bottom}_2$ of the combined ranks $\mathbf{R}_w$, the algorithm identifies
+\emph{offenders}—contestants who currently occupy the bottom two but should be safer than $e$.
+
 $\star$ \textbf{Minimal Swap Logic:} The algorithm iteratively executes minimal rank swaps between $e$ and these offenders. Each swap is designed to push $e$ deeper into the danger zone while minimizing the Kendall-Tau distance from the prior ranking, ensuring the reconstructed votes represent the \textit{least-informed sufficient deviation} required to explain the result.
 
 \subsubsection{Probabilistic Mapping and Ensemble Inference}
@@ -311,8 +314,76 @@ where $\gamma$ captures the latent "decay" of fan support across the leaderboard
 To quantify the inherent ambiguity of the Judges' Save, we do not produce a single deterministic answer. Instead, we utilize an \textbf{Ensemble Perturbation Method}. By injecting Gaussian noise $\epsilon \sim \mathcal{N}(0, \sigma^2)$ into the judge scores $\mathbf{J}_w$ and running the swapping heuristic $N=1,000$ times, we generate a posterior distribution of $f_{i,w}$. 
 
 The "Judges' Save" logic is implicitly captured here: if a contestant with high judge scores is eliminated, the ensemble of valid $f_{i,w}$ will converge toward significantly lower values to counteract the high $J_{i,w}$ and force them into the Bottom Two. The variance of this ensemble (Coefficient of Variation) serves as our formal measure of model certainty, reflecting the "transparency" of the elimination in that specific week.
-\subsection{Uncertainty Quantification via Ensemble Simulation}
-To satisfy the problem's requirement for "measures of certainty," we do not rely on a single point estimate. For all regimes, we run an \textbf{Ensemble of $N=1,000$ Simulations} per week with perturbed inputs $J_{input} \sim \mathcal{N}(J_{obs}, \sigma_{noise})$. The resulting distribution of fan votes provides both the \textbf{Point Estimate} (the mean of the ensemble $\mu_f$) and the \textbf{Certainty Metric} (the Coefficient of Variation $CV = \sigma_f / \mu_f$), where a high CV indicates that the elimination result could have been caused by many different voting scenarios.
+\subsection{Model Performance and Empirical Validation}
+
+To address the core questions of consistency and certainty in our fan vote estimates, we evaluate model performance along two orthogonal dimensions: (1)~\textit{consistency}---whether our inferred fan votes produce elimination outcomes that match the observed results; and (2)~\textit{uncertainty}---how precisely we can pinpoint the fan vote shares, quantified by the coefficient of variation (CV) and confidence interval width.
+
+\subsubsection{Consistency Analysis}
+
+\textbf{Definition.} For each week $w$, let $\hat{v}_i^{(w)}$ denote our estimated fan vote share for contestant $i$, and let $E_w$ be the set of contestants actually eliminated. We define the \textit{consistency probability} as the proportion of weeks where the model's predicted bottom-ranked contestant(s) under the applicable voting rule coincide with $E_w$:
+\begin{equation}
+    P_{\text{cons}} = \frac{1}{|W|} \sum_{w \in W} \mathbf{1}\left[\text{Elim}(\hat{\mathbf{v}}^{(w)}) = E_w\right].
+\end{equation}
+
+\textbf{Results by Season.} As illustrated in Figure~\ref{fig:cons_cer} (upper-right panel), the model achieves near-perfect consistency across the Percent regime (Seasons~3--27), with an average consistency probability of $\bar{P}_{\text{cons}} = 0.95$. The Rank regime (Seasons~1--2) exhibits slightly lower consistency ($\bar{P} = 0.88$), attributable to the rank-compression effect that reduces the discriminative power of elimination signals. The Bottom-2 regime (Seasons~28--34) maintains robust consistency ($\bar{P} = 0.89$) despite the structural ambiguity introduced by the judges' save mechanism.
+
+\textbf{Results by Week.} The lower-right panel of Figure~\ref{fig:cons_cer} reveals a temporal pattern: consistency remains high ($P > 0.93$) during early-to-mid competition (Weeks~1--8), but declines sharply in later weeks---particularly Week~10 ($P = 0.55$) and Week~11 ($P = 0.56$). This phenomenon reflects the \textit{information scarcity} in late-stage competition: with only 3--4 contestants remaining, a single elimination event provides limited discriminative constraints, increasing the feasible region of fan vote distributions that could explain the outcome.
+
+\subsubsection{Uncertainty Quantification}
+
+\textbf{Metrics.} We employ two complementary measures of inference precision:
+\begin{itemize}
+    \item \textbf{Coefficient of Variation (CV)}: $\text{CV}_i = \sigma_i / \mu_i$, capturing relative volatility of estimates across Monte Carlo samples.
+    \item \textbf{Confidence Interval Width}: The 95\% CI width $w_{95} = \hat{v}_i^{(97.5)} - \hat{v}_i^{(2.5)}$, measuring absolute uncertainty magnitude.
+\end{itemize}
+
+\textbf{Regime-Dependent Uncertainty.} Table~\ref{tab:uncertainty} and Figure~\ref{fig:cons_cer} (left panels) reveal a striking regime-dependent pattern in model uncertainty:
+
+\begin{itemize}
+    \item \textbf{Percent Regime (S3--27):} The model achieves exceptional precision with an average CV of only $\bar{\text{CV}} = 0.014$ (1.4\%). This reflects the rich informational content of percentage-based voting: the exact numerical thresholds for elimination impose tight mathematical constraints on feasible fan vote distributions.
+    
+    \item \textbf{Rank Regime (S1--2):} Uncertainty is elevated ($\bar{\text{CV}} = 0.186$), representing a 13$\times$ increase over the Percent era. The rank-transformation compresses continuous vote shares into discrete ordinal positions, destroying magnitude information and widening the feasible solution space.
+    
+    \item \textbf{Bottom-2 Regime (S28--34):} The highest uncertainty ($\bar{\text{CV}} = 0.449$) arises from the judges' save mechanism. Since judges may override pure fan-vote rankings, the elimination outcome no longer deterministically identifies the lowest-voted contestant, introducing fundamental ambiguity that propagates through our inference.
+\end{itemize}
+
+\textbf{Temporal Evolution.} The spatio-temporal uncertainty visualization (Figure~\ref{fig:cons_cer}, lower-left) demonstrates two key patterns:
+
+\begin{enumerate}
+    \item \textbf{Within-Season Convergence:} For the Rank regime, CV decreases monotonically from Week~1 (0.29) to Week~8 (0.08), reflecting the cumulative information gain as sequential elimination events progressively constrain the feasible fan vote space.
+    
+    \item \textbf{Late-Week Divergence:} Paradoxically, CI width \textit{increases} in final weeks (see Figure~\ref{fig:cons_cer}, upper-left). With fewer contestants remaining, each individual's vote share becomes more sensitive to perturbations, and the constraint structure becomes sparser, leading to an ``uncertainty horizon'' effect.
+\end{enumerate}
+
+\subsubsection{Summary of Validation Findings}
+
+\begin{table}[htbp]
+\centering
+\caption{Summary of Model Performance Metrics by Voting Regime}
+\label{tab:validation_summary}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{Rank (S1--2)} & \textbf{Percent (S3--27)} & \textbf{Bottom-2 (S28--34)} \\
+\midrule
+Avg Consistency Prob. & 0.88 & 0.95 & 0.89 \\
+Avg CV & 0.186 & 0.014 & 0.449 \\
+Avg CI Width (95\%) & 0.091 & 0.008 & 0.118 \\
+Information Quality & Moderate & High & Low \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In conclusion, our model demonstrates strong empirical validity: it correctly recovers elimination outcomes with high probability (overall $\bar{P}_{\text{cons}} = 0.93$), while uncertainty quantification reveals interpretable regime-dependent patterns that align with the theoretical information content of each voting mechanism. The Percent regime provides the most reliable inference, while the judges' save mechanism in recent seasons introduces irreducible ambiguity that is faithfully captured by our probabilistic framework.
+
+% -------------------- 引用图片 --------------------
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/cons&cer.png}
+    \caption{Comprehensive visualization of model consistency and uncertainty. \textit{Upper-left:} Temporal evolution of inference confidence (CV and CI width by week). \textit{Lower-left:} Spatio-temporal CI width evolution across 34 seasons. \textit{Upper-right:} Weekly consistency trends by voting regime. \textit{Lower-right:} Season-level consistency probability with regime-colored bars.}
+    \label{fig:cons_cer}
+\end{figure}
+
 \section{Model Development}
 
 \subsection{Rationale and Overall Structure}
