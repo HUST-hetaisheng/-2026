@@ -210,121 +210,25 @@ Consistency with eliminations takes absolute priority over smoothness and entrop
 \emph{Justification:} The primary goal is to \emph{explain} observed eliminations. Behavioral regularization (smoothness, entropy) is secondary and serves only as a tie-breaker when multiple solutions achieve equal consistency.
 
 \subsection{Notations}
-\label{sec:notations}
-
-We use the following notation throughout the paper:
-
-\begin{table}[H]
-\centering
-\caption{Key Notations and Symbols}
-\begin{tabular}{cl}
-\toprule
-\textbf{Symbol} & \textbf{Definition} \\
-\midrule
-$i$ & Contestant index \\
-$t$ & Week index (1 to $T$) \\
-$s$ & Season index (1 to 34) \\
-$J_{i,t}$ & Total judges' score for contestant $i$ in week $t$ \\
-$j_{i,t}$ & Judges' score share: $j_{i,t} = J_{i,t} / \sum_{k\in A_t} J_{k,t}$ \\
-$f_{i,t}$ & Fan vote share for contestant $i$ in week $t$ (estimated) \\
-$V_{i,t}$ & Absolute fan vote count: $V_{i,t} = T_t \cdot f_{i,t}$ \\
-$T_t$ & Total votes cast in week $t$ (set to $10^7$ for presentation) \\
-$c_{i,t}$ & Combined score: $c_{i,t} = j_{i,t} + f_{i,t}$ (Percent regime) \\
-$r^J_{i,t}$ & Judges' rank for contestant $i$ in week $t$ (Rank regime) \\
-$r^F_{i,t}$ & Fan vote rank for contestant $i$ in week $t$ (Rank regime) \\
-$A_t$ & Active contestant set in week $t$: $A_t = \{i : J_{i,t} > 0\}$ \\
-$E_t$ & Eliminated contestant set in week $t$ (vote-determined) \\
-$S_t$ & Safe contestant set in week $t$: $S_t = A_t \setminus E_t$ \\
-$\delta_t$ & Slack variable for week $t$ (relaxes hard constraints) \\
-$\alpha, \beta, \gamma$ & Regularization hyperparameters \\
-$M$ & Large penalty coefficient for slack minimization \\
-$K$ & Number of ensemble runs for uncertainty quantification \\
-\bottomrule
-\end{tabular}
-\label{tab:notations}
-\end{table}
 
 \subsection{Data Processing}
-\label{sec:data_processing}
-
-The dataset contains 34 seasons of DWTS with contestant information, weekly judges' scores, and elimination outcomes. We perform the following preprocessing steps:
-
-\paragraph{1. Missing Data Handling}
-\begin{itemize}
-    \item \textbf{Judges' scores:} Missing values (e.g., due to judge absences) are represented as 0 in the raw data. We compute total judges' score $J_{i,t}$ by summing all available (non-zero) judge scores. Weeks with all-zero scores indicate elimination or withdrawal; such observations are excluded from $A_t$.
-    \item \textbf{Elimination results:} The \texttt{results} column contains text descriptions (\texttt{Eliminated}, \texttt{Withdrew}, \texttt{Winner}, etc.). We parse this field to identify elimination type and week. Withdrew cases are flagged and excluded from vote-determined eliminations.
-    \item \textbf{Finals ranking:} The \texttt{placement} column provides final ranking (1--4 or 1--3). We use this to verify finals consistency and to impute final-week vote shares when needed.
-\end{itemize}
-
-\paragraph{2. Active Set Construction}
-For each week $t$ in each season $s$, we define the active contestant set:
-\begin{equation}
-A_t = \{i \in \text{contestants}_s : J_{i,t} > 0\}.
-\end{equation}
-This automatically excludes eliminated and withdrawn contestants from subsequent weeks.
-
-\paragraph{3. Regime Classification}
-Based on historical DWTS rules \cite{WikiDWTS}, we classify seasons into three regimes:
-\begin{itemize}
-    \item \textbf{Rank (Seasons 1--2):} Combined rank = judges' rank + fan rank. Elimination determined by highest combined rank.
-    \item \textbf{Percent (Seasons 3--27):} Combined score = judges' share + fan share. Elimination determined by lowest combined score.
-    \item \textbf{Bottom2 (Seasons 28--34):} Bottom two contestants by combined rank are identified; judges choose one to eliminate.
-\end{itemize}
-
-\paragraph{4. Judge Share Normalization}
-To ensure fair comparison with fan vote shares, we normalize judges' scores to shares:
-\begin{equation}
-j_{i,t} = \frac{J_{i,t}}{\sum_{k\in A_t} J_{k,t}}.
-\end{equation}
-This ensures $\sum_{i\in A_t} j_{i,t} = 1$, matching the fan vote simplex constraint.
-
-\paragraph{5. Week Type Annotation}
-We categorize weeks into types based on elimination patterns:
-\begin{itemize}
-    \item \texttt{single\_elim}: One contestant eliminated (standard week)
-    \item \texttt{multi\_elim\_2}: Two contestants eliminated in one week
-    \item \texttt{multi\_elim\_3}: Three contestants eliminated in one week
-    \item \texttt{no\_elim\_interp}: No elimination (interpolated/results week)
-    \item \texttt{finals}: Final week with ranking outcome
-    \item \texttt{bottom2\_relaxed}: Bottom2 regime with relaxed constraints
-\end{itemize}
-This annotation is used for uncertainty analysis (Section~\ref{sec:task1_uncertainty}).
-
-\paragraph{6. Data Quality Validation}
-We perform the following validation checks:
-\begin{itemize}
-    \item \textbf{Monotonicity:} Verify that elimination weeks are monotonically increasing (no contestant reappears after elimination).
-    \item \textbf{Finals consistency:} Check that finals ranking matches the last active week's contestant set.
-    \item \textbf{Judge score validity:} Confirm that judge scores fall within expected ranges (typically 1--10 per judge).
-\end{itemize}
-
-After preprocessing, the clean dataset contains approximately 2,100 contestant-week observations across 34 seasons, with no missing values in critical fields ($J_{i,t}$, elimination status).
 
 
 % ============================================
 % Full modeling for Question 1 (all seasons)
 % ============================================
 
-\section{Task 1: Vote Estimation}
+\section{Model: Inverse Estimation of Fan Votes}
 
-\subsection{Why vote estimation is special and modeling choice}
-Vote estimation for Dancing with the Stars is an inverse problem: judges' scores and weekly elimination outcomes are observed, while the audience votes are unobserved. This differs from a standard prediction task because there is no direct ground-truth target to supervise a regression or classification model. Supervised learning (e.g. direct regression of votes from judges' scores and contestant features) cannot guarantee that the inferred votes reproduce the observed eliminations, and it does not quantify the non-uniqueness inherent to the inverse problem. For these reasons we avoid pure predictive algorithms and instead adopt a constrained inverse-estimation approach that enforces the show's elimination rules as hard or soft constraints.
+\subsection{Problem Framing}
+The core challenge of Question 1 is an \emph{inverse problem}: fan vote totals are not publicly available, 
+yet the observed eliminations place constraints on what the votes could have been. We seek weekly fan vote 
+shares $f_{i,t}$ that are \emph{consistent} with the stated elimination rule while encoding minimal behavioral 
+assumptions.
 
-Our chosen framework is a convex-optimization-based inverse model (Percent-regime optimization) with discrete handling for Rank-type seasons and a probabilistic component for Bottom2 seasons. 简要理由：
-\begin{itemize}
-  \item 规则约束可以用线性不等式或排列约束表示，便于直接嵌入优化问题；
-  \item 对于 Percent 型赛季，变量为投票份额，问题在适当正则化下可转化为凸问题，保证全局最优；
-  \item 对于 Rank 或 Bottom2 赛季，采用整数/概率方法处理非凸性，同时保持与整个季联立求解的思路一致；
-  \item 使用平滑与最大熵作为弱先验，既保留解释力也避免人为引入极端解。
-\end{itemize}
-
-\subsection{Convex optimization model (overall)}
-
-\subsubsection{Problem Framing}
-The core challenge of Task 1 is an \emph{inverse problem}: fan vote totals are not publicly available, yet the observed eliminations place constraints on what the votes could have been. We seek weekly fan vote shares $f_{i,t}$ that are \emph{consistent} with the stated elimination rule while encoding minimal behavioral assumptions.
-
-\subsubsection{Data Preparation and Notation}
-Let $J_{i,t}$ be contestant $i$'s total judges score in week $t$ (sum of available judges; missing values ignored). The data use $0$ as a placeholder after elimination, so the active set is
+\subsection{Data Preparation and Notation}
+Let $J_{i,t}$ be contestant $i$'s total judges score in week $t$ (sum of available judges; missing values ignored).
+The data use $0$ as a placeholder after elimination, so the active set is
 \begin{equation}
 A_t=\{i: J_{i,t}>0\}.
 \end{equation}
@@ -332,207 +236,151 @@ We treat the last positive score week as the primary elimination signal:
 \begin{equation}
 \mathrm{exit}(i)=\max\{t: J_{i,t}>0\}.
 \end{equation}
-The \texttt{results} text is used only to flag \texttt{Withdrew} cases, while finals ranking is taken from the native \texttt{placement} column (complete for all contestants).
+The \texttt{results} text is used only to flag \texttt{Withdrew} cases, while finals ranking is taken from the native
+\texttt{placement} column (complete for all contestants).
 
 We estimate weekly fan vote \emph{shares}
 \begin{equation}
 f_{i,t}\ge 0,\qquad \sum_{i\in A_t} f_{i,t}=1,
 \end{equation}
-and define judge shares $j_{i,t}=J_{i,t}/\sum_{k\in A_t}J_{k,t}$. Let $E_t\subseteq A_t$ be the vote-determined eliminated set (excluding \textit{Withdrew}) and $S_t=A_t\setminus E_t$.
+and define judge shares $j_{i,t}=J_{i,t}/\sum_{k\in A_t}J_{k,t}$. Let $E_t\subseteq A_t$ be the vote-determined
+eliminated set (excluding \textit{Withdrew}) and $S_t=A_t\setminus E_t$.
 
-\subsubsection{Season-dependent regimes and their mathematical constraints}
-The show uses three distinct regimes across seasons; each regime determines how eliminations constrain $f_{i,t}$:
+\subsection{Season-Dependent Rule Regimes}
+The competition uses three different rules across its history:
 \begin{itemize}
-\item \textbf{Rank (Seasons 1--2)}: combined rank = judge rank + fan rank. Fan ranks must form a permutation $r^F_{\cdot,t}$; eliminated contestants have the worst combined ranks. This leads to integer/permutation constraints on ranks and an exponentiation mapping to convert ranks into shares:
+\item \textbf{S1--2 (Rank)}: combined rank = judge rank + fan rank; the worst sum is eliminated.
+\item \textbf{S3--27 (Percent)}: combined score = judge share + fan share; the smallest sum is eliminated.
+\item \textbf{S28--34 (Bottom2 + judges' choice)}: bottom two by combined rank; judges choose whom to eliminate.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/rules_chart.png}
+    \caption{The Rules'Change}
+    \label{fig:placeholder}
+\end{figure}
+\end{itemize}
+
+\subsection{Regime A: Percent Seasons (S3--27)}
+\paragraph{Goal.} Infer $f_{i,t}$ so that eliminated contestants are in the bottom-$|E_t|$ by combined score
+$c_{i,t}=j_{i,t}+f_{i,t}$.
+
+\paragraph{Multi-elimination constraint (with slack).} For each elimination week,
+\begin{equation}
+c_{e,t}\le c_{p,t}+\delta_t,\qquad \forall e\in E_t,\ \forall p\in S_t,
+\label{eq:percent_hard}
+\end{equation}
+with slack $\delta_t\ge 0$ to absorb ties and special episodes. If $E_t=\varnothing$, no ordering constraint is imposed.
+
+\paragraph{Convex optimization.} We select the ``least-assumptive'' explanation:
+\begin{equation}
+\min_{f,\delta}\ \ 
+M\sum_{t=1}^{T}\delta_t
++\beta\sum_{t=2}^{T}\sum_{i\in A_t\cap A_{t-1}} (f_{i,t}-f_{i,t-1})^2
++\alpha\sum_{t=1}^{T}\sum_{i\in A_t} f_{i,t}\log f_{i,t},
+\label{eq:percent_obj}
+\end{equation}
+subject to the simplex constraints and Eq.~\eqref{eq:percent_hard}.
+The first term prioritizes consistency (minimal slack), the second encodes popularity persistence (temporal smoothness),
+and the third is negative entropy (preferring high-entropy solutions unless forced otherwise).
+
+\paragraph{Two-stage solve.} Consistency is prioritized via:
+\begin{enumerate}
+\item \textbf{Stage 1 (feasibility):} Minimize $\delta_t$ subject to constraints.
+\item \textbf{Stage 2 (tie-break):} Restrict $\delta_t\le \delta_t^\star+\varepsilon$ and minimize
+$\beta\,\mathcal{L}(\bm f_t)-\alpha\sum_{i}f_{i,t}\log f_{i,t}$,
+where $\mathcal{L}$ is a softmax negative log-likelihood for multi-elimination weeks.
+\end{enumerate}
+
+\paragraph{Finals and no-elimination weeks.} For the final week, we enforce the ranking order
+$c_{\pi(1),T}>c_{\pi(2),T}>\cdots$ using \textit{placement}. For no-elimination weeks,
+we interpolate $f_{i,t}$ from adjacent weeks with the same active set.
+
+\subsection{Regime B: Rank Seasons (S1--2)}
+Let $r^J_{i,t}$ be the judge rank (1=best). Fan ranks $r^F_{i,t}$ must form a \emph{permutation} of
+$\{1,\ldots,|A_t|\}$. The combined rank is
+\begin{equation}
+c_{i,t}=r^J_{i,t}+r^F_{i,t},
+\end{equation}
+and eliminated contestants are those with the largest $c_{i,t}$.
+We construct a feasible permutation by assigning the worst fan ranks to eliminated contestants and
+the best fan ranks to contestants with weak judge ranks, then perform swaps to satisfy the elimination constraint.
+If no permutation makes all eliminated contestants the worst, we label the week as an \emph{upset}.
+Fan ranks are mapped to vote shares by
 \begin{equation}
 f_{i,t}=\frac{\exp(-\gamma(r^F_{i,t}-1))}{\sum_{p\in A_t}\exp(-\gamma(r^F_{p,t}-1))}.
 \end{equation}
-\item \textbf{Percent (Seasons 3--27)}: combined score $c_{i,t}=j_{i,t}+f_{i,t}$. Eliminated contestants must lie among the lowest by combined score. The Percent regime admits a convex formulation via linear inequality constraints:
+
+\subsection{Regime C: Bottom2 + Judges' Save (S28--34)}
+The bottom two are the contestants with the two highest combined ranks.
+In single-elimination weeks, the eliminated contestant $e$ is known, but the bottom-two partner $b$ is unobserved.
+
+\paragraph{Probabilistic Judges' Save Model.}
+We model the judges' decision probabi listically. Given bottom-two contestants $\{e, b\}$, the probability
+that judges eliminate $e$ (and save $b$) is:
 \begin{equation}
-c_{e,t}\le c_{p,t}+\delta_t,\quad \forall e\in E_t,\ \forall p\in S_t,
-\label{eq:percent_hard}
+\Pr(\text{elim } e \mid e, b) = \sigma\left(\kappa(J_{b,t} - J_{e,t})\right),
+\label{eq:judges_save}
 \end{equation}
-where $\delta_t\ge0$ is slack.
-\item \textbf{Bottom2 + Judges' choice (Seasons 28--34)}: bottom-two by combined rank are identified; judges choose one to eliminate. The bottom-two partner is unobserved, so we use a probabilistic judges-save model for partner selection (sigmoid in judge-score difference) and either enumerate feasible partners or sample in an ensemble.
-\end{itemize}
+where $\sigma(\cdot)$ is the sigmoid function and $\kappa > 0$ controls sensitivity to score differences.
+This encodes the intuition that judges prefer to save the higher-scoring contestant.
 
-\subsubsection{Optimization objective (Percent seasons)}
-For Percent seasons we use a two-stage strategy. Stage 1 minimizes slack $\delta$ to achieve maximum consistency. Stage 2 solves a convex regularized objective to break ties and enforce smoothness and high entropy:
-\begin{equation}
-\min_{f,\delta}\ \ M\sum_{t=1}^{T}\delta_t+\beta\sum_{t=2}^{T}\sum_{i\in A_t\cap A_{t-1}}(f_{i,t}-f_{i,t-1})^2+\alpha\sum_{t=1}^{T}\sum_{i\in A_t} f_{i,t}\log f_{i,t},
-\label{eq:percent_obj}
-\end{equation}
-subject to simplex constraints and Eq.~\eqref{eq:percent_hard}.
+\paragraph{Partner Selection.}
+For each candidate partner $b \in A_t \setminus \{e\}$:
+if  fan ranks can be assigned and $\{e, b\}$ form the bottom two , compute $\Pr(\text{elim } e \mid e, b)$ via Eq.~\eqref{eq:judges_save}. And then select the partner with highest elimination probability (deterministic mode) or sample from
+the normalized distribution (stochastic mode for ensemble).
 
-The first term prioritizes consistency (minimal slack), the second enforces temporal smoothness, and the third encodes a maximum-entropy preference. Hyperparameters $M,\beta,\alpha$ are chosen by sensitivity analysis; $M$ is set large to prioritize feasibility in Stage 1.
 
-\subsection{Consistency Evaluation}
-\label{sec:task1_consistency}
+\paragraph{Ensemble Sampling.}
+In ensemble runs, we sample the partner from the probability distribution, capturing uncertainty
+from both score perturbation \emph{and} judges' decision variability.
+Multi-elimination weeks fall back to the rank-permutation construction.
 
-To assess how well the estimated fan votes reproduce the observed elimination outcomes, we define several quantitative metrics.
-
-\subsubsection{Constraint Satisfaction Rate (CSR)}
-
-The \textbf{Constraint Satisfaction Rate (CSR)} measures the fraction of weeks where the estimated votes perfectly satisfy the elimination rule:
-\begin{equation}
-\text{CSR}_s = \frac{1}{T_s} \sum_{t=1}^{T_s} \mathbb{I}[\text{elimination rule satisfied in week } t],
-\label{eq:csr}
-\end{equation}
-where $T_s$ is the number of weeks in season $s$, and $\mathbb{I}[\cdot]$ is the indicator function. For Percent seasons, the rule is satisfied if $\delta_t = 0$; for Rank/Bottom2 seasons, we check whether the estimated ranks/combined scores produce the observed elimination.
-
-\subsubsection{Jaccard Similarity}
-
-For multi-elimination weeks, we compute the \textbf{Jaccard similarity} between the observed eliminated set $E_t^{\text{obs}}$ and the predicted eliminated set $E_t^{\text{pred}}$:
-\begin{equation}
-J_t = \frac{|E_t^{\text{obs}} \cap E_t^{\text{pred}}|}{|E_t^{\text{obs}} \cup E_t^{\text{pred}}|}.
-\label{eq:jaccard}
-\end{equation}
-$J_t = 1$ indicates perfect agreement; $J_t < 1$ indicates partial mismatch.
-
-\subsubsection{Margin of Violation}
-
-For weeks with non-zero slack $\delta_t > 0$, the \textbf{margin of violation} quantifies the magnitude of inconsistency:
-\begin{equation}
-\Delta_t = \max_{e\in E_t, p\in S_t} \left[ c_{e,t} - c_{p,t} \right]_+,
-\label{eq:margin}
-\end{equation}
-where $[\cdot]_+ = \max(0, \cdot)$. Larger $\Delta_t$ indicates stronger violation of the elimination rule (i.e., eliminated contestants had higher combined scores than some safe contestants).
-
-\subsubsection{Slack Distribution}
-
-We analyze the distribution of slack variables $\{\delta_t\}$ across weeks and seasons:
+\subsection{Consistency Measures}
+We compute the following metrics:
 \begin{itemize}
-    \item \textbf{Zero-slack weeks:} Weeks where $\delta_t = 0$ (perfect consistency).
-    \item \textbf{Non-zero slack weeks:} Weeks where $\delta_t > 0$ (relaxed constraints needed).
-    \item \textbf{Mean slack:} $\bar{\delta}_s = \frac{1}{T_s} \sum_{t=1}^{T_s} \delta_t$.
+\item \textbf{Exact-Set Accuracy (CSR):} Fraction of elimination weeks whose inferred votes reproduce the observed elimination.
+\item \textbf{Jaccard Similarity:} $\text{Jaccard}(t)=|\hat E_t\cap E_t|/|\hat E_t\cup E_t|$ for multi-elimination weeks.
+\item \textbf{Decisiveness Margin:} Gap between the $|E_t|$-th and $(|E_t|+1)$-th combined scores.
+\item \textbf{Slack:} For Percent seasons, the mean slack $\overline{\delta}$ summarizes how often constraints must be relaxed.
 \end{itemize}
 
-\subsubsection{Aggregate Consistency by Regime}
-
-Table~\ref{tab:csr_detailed} provides detailed CSR statistics by regime:
-
-\begin{table}[H]
-\centering
-\caption{Detailed Constraint Satisfaction Rate by Regime}
-\begin{tabular}{lccccc}
-\toprule
-\textbf{Regime} & \textbf{Seasons} & \textbf{Total Weeks} & \textbf{Perfect Weeks} & \textbf{CSR (\%)} & \textbf{Mean Slack} \\
-\midrule
-Rank & 1--2 & 18 & 18 & 100.0 & 0.000 \\
-Percent & 3--27 & 312 & 312 & 100.0 & 0.000 \\
-Bottom2 & 28--34 & 89 & 71 & 79.7 & 0.042 \\
-\bottomrule
-\end{tabular}
-\label{tab:csr_detailed}
-\end{table}
-
-\paragraph{Interpretation:}
+\subsection{Certainty Measures}
+We quantify certainty via a perturb-and-resolve ensemble ($K=20$ runs):
 \begin{itemize}
-    \item \textbf{Percent regime (100\% CSR):} Hard constraints (Eq.~\eqref{eq:percent_hard}) ensure perfect consistency by construction. All eliminations are exactly reproduced.
-    \item \textbf{Rank regime (100\% CSR):} Permutation-based search over fan ranks finds consistent solutions for all weeks in Seasons 1--2.
-    \item \textbf{Bottom2 regime (79.7\% CSR):} The unobserved bottom-two partner introduces ambiguity. In $\sim20\%$ of weeks, no feasible partner exists that satisfies both the elimination and the judges' save probability, requiring slack relaxation.
+\item Perturb only active judge scores ($J_{i,t}>0$) with small noise.
+\item For Bottom2 seasons: additionally sample the bottom-two partner from the probability distribution
+defined by Eq.~\eqref{eq:judges_save}, capturing judges' decision uncertainty.
+\item Re-solve the inverse problem.
+\item Compute per-contestant/week statistics.
 \end{itemize}
-
-\subsection{Uncertainty Measurement}
-\label{sec:task1_uncertainty}
-
-Because the inverse problem is inherently ill-posed (multiple vote distributions can produce the same eliminations), we quantify the uncertainty of estimated fan votes using an ensemble approach.
-
-\subsubsection{Ensemble Construction}
-
-We generate $K$ perturbed versions of the judges' scores:
+The certainty index is:
 \begin{equation}
-J_{i,t}^{(k)} = J_{i,t} + \epsilon_{i,t}^{(k)}, \quad \epsilon_{i,t}^{(k)} \sim \mathcal{N}(0, \sigma^2),
-\label{eq:ensemble_perturbation}
+\text{Certainty}(i,t)=\frac{1}{1+\text{CV}(i,t)}=\frac{\mu_{i,t}}{\mu_{i,t}+\sigma_{i,t}},
 \end{equation}
-where $\sigma$ is the perturbation standard deviation (typically set to 5\% of the mean judge score). For each perturbed dataset, we re-run the optimization to obtain $f_{i,t}^{(k)}$.
-
-\subsubsection{Certainty Metric}
-
-For each contestant-week pair $(i,t)$, we compute the \textbf{certainty} as:
-\begin{equation}
-\text{Certainty}_{i,t} = 1 - \frac{\text{std}(f_{i,t}^{(1)}, \ldots, f_{i,t}^{(K)})}{\text{mean}(f_{i,t}^{(1)}, \ldots, f_{i,t}^{(K)})},
-\label{eq:certainty}
-\end{equation}
-i.e., one minus the coefficient of variation (CV). Higher certainty (closer to 1) indicates that the estimate is robust to perturbations; lower certainty indicates high sensitivity.
-
-\subsubsection{Confidence Intervals}
-
-We construct 95\% confidence intervals using the ensemble:
-\begin{equation}
-\text{CI}_{95\%}(f_{i,t}) = \left[ Q_{2.5\%}(f_{i,t}^{(1:K)}), \, Q_{97.5\%}(f_{i,t}^{(1:K)}) \right],
-\label{eq:ci}
-\end{equation}
-where $Q_p$ denotes the $p$-th percentile.
-
-\subsubsection{Variation by Contestant and Week Type}
-
-We analyze certainty variation along two dimensions:
-
-\paragraph{1. By Week Type}
-Certainty varies significantly by week type (detailed analysis in Section~\ref{sec:certainty}):
-\begin{itemize}
-    \item \textbf{Finals weeks:} Certainty $\approx 1.0$ (small active set, strong ranking constraint).
-    \item \textbf{Single elimination weeks:} High certainty (0.98 for Percent, 0.82 for Bottom2).
-    \item \textbf{Multi-elimination weeks:} Lower certainty (0.90--0.97) due to tighter ordering requirements.
-    \item \textbf{No-elimination weeks:} Slightly higher certainty (fewer constraints, but also less information).
-\end{itemize}
-
-\paragraph{2. By Contestant Popularity}
-We correlate certainty with estimated vote share:
-\begin{equation}
-\rho_{\text{cert-vote}} = \text{corr}(\text{Certainty}_{i,t}, f_{i,t}).
-\label{eq:corr_cert_vote}
-\end{equation}
-Preliminary analysis shows weak negative correlation ($\rho \approx -0.12$), suggesting that low-vote contestants (near elimination threshold) have slightly higher uncertainty.
-
-\paragraph{3. By Regime}
-Regime-level certainty (Section~\ref{sec:certainty}) shows:
-\begin{itemize}
-    \item \textbf{Percent regime:} Avg certainty = 0.982 (very high).
-    \item \textbf{Rank regime:} Avg certainty = 0.946 (high, limited by permutation ambiguity).
-    \item \textbf{Bottom2 regime:} Avg certainty = 0.786 (moderate, due to judges' save and partner uncertainty).
-\end{itemize}
-
-\subsubsection{Algorithm for Uncertainty Quantification}
-
-The complete ensemble-based uncertainty quantification procedure is summarized in Algorithm~\ref{alg:uncertainty}.
+where $\mu_{i,t}$ and $\sigma_{i,t}$ are the ensemble mean and standard deviation of $f_{i,t}$.
 
 \begin{algorithm}[H]
-\caption{Ensemble-based Uncertainty Quantification}
-\label{alg:uncertainty}
+\caption{Inverse Estimation Workflow (All Seasons)}
 \begin{algorithmic}[1]
-\State \textbf{Input:} Judges' scores $\{J_{i,t}\}$, elimination outcomes $\{E_t\}$, ensemble size $K$, perturbation std $\sigma$
-\State \textbf{Output:} Mean vote shares $\bar{f}_{i,t}$, certainty $\text{Certainty}_{i,t}$, confidence intervals $\text{CI}_{95\%}(f_{i,t})$
-\For{$k = 1$ to $K$}
-    \State Sample perturbations: $\epsilon_{i,t}^{(k)} \sim \mathcal{N}(0, \sigma^2)$ for all $i,t$
-    \State Compute perturbed scores: $J_{i,t}^{(k)} = J_{i,t} + \epsilon_{i,t}^{(k)}$
-    \State Solve optimization problem (Eq.~\eqref{eq:percent_obj}) with $J^{(k)}$ to obtain $f^{(k)}_{i,t}$
-    \State Store $f^{(k)}_{i,t}$ in ensemble array
+\State \textbf{Input:} Judge scores $J_{i,t}$, results text, placements.
+\State \textbf{Output:} Fan vote shares $\hat f_{i,t}$, CSR, certainty statistics.
+\State Build $A_t=\{i:J_{i,t}>0\}$ and classify weeks by $E_t$.
+\For{each season}
+    \If{Percent (S3--27)}
+        \State Stage 1: minimize slack $\delta_t$ under Eq.~\eqref{eq:percent_hard}.
+        \State Stage 2: enforce $\delta_t\le \delta_t^\star+\varepsilon$ and minimize objective~\eqref{eq:percent_obj}.
+    \ElsIf{Rank (S1--2)}
+        \State Construct a valid fan-rank permutation; swap ranks until eliminations are worst.
+    \ElsIf{Bottom2 (S28--34)}
+        \State Enumerate feasible partners $b$; compute $\Pr(\text{elim } e \mid e,b)$ via Eq.~\eqref{eq:judges_save}.
+        \State Select partner with highest probability (or sample in ensemble mode).
+    \EndIf
+    \State Enforce finals ordering from \texttt{placement}; interpolate $f_{i,t}$ for no-elimination weeks.
+    \State Ensemble: perturb $J_{i,t}$, sample judges' save for Bottom2, re-solve, compute $\mu,\sigma,\text{Certainty}$.
+    \State Validate eliminations and compute CSR.
 \EndFor
-\For{each contestant-week pair $(i,t)$}
-    \State Compute mean: $\bar{f}_{i,t} = \frac{1}{K}\sum_{k=1}^{K} f_{i,t}^{(k)}$
-    \State Compute std: $\sigma_{i,t} = \sqrt{\frac{1}{K-1}\sum_{k=1}^{K}(f_{i,t}^{(k)} - \bar{f}_{i,t})^2}$
-    \State Compute CV: $\text{CV}_{i,t} = \sigma_{i,t} / \bar{f}_{i,t}$
-    \State Compute certainty: $\text{Certainty}_{i,t} = 1 - \text{CV}_{i,t}$
-    \State Compute 95\% CI: $\text{CI}_{95\%}(f_{i,t}) = [Q_{2.5\%}, Q_{97.5\%}]$ from $\{f_{i,t}^{(k)}\}_{k=1}^K$
-\EndFor
-\State \Return $\bar{f}_{i,t}$, $\text{Certainty}_{i,t}$, $\text{CI}_{95\%}(f_{i,t})$
 \end{algorithmic}
 \end{algorithm}
-
-\subsubsection{Validation: Does Uncertainty Vary?}
-
-\textbf{Answer: Yes.} Our analysis (Table~\ref{tab:weektype_certainty}) demonstrates that:
-\begin{enumerate}
-    \item \textbf{Certainty varies by regime:} Percent (0.982) > Rank (0.946) > Bottom2 (0.786).
-    \item \textbf{Certainty varies by week type:} Finals (1.0) > single\_elim (0.82--0.99) > multi\_elim (0.90--0.97).
-    \item \textbf{Certainty varies by contestant:} Weak correlation with vote share ($\rho \approx -0.12$), but measurable variation exists.
-\end{enumerate}
-
-This confirms that the inverse problem's non-uniqueness is not uniform: some weeks and contestants are tightly constrained (high certainty), while others admit a range of plausible vote distributions (lower certainty).
-
-
 
 \section{Model Results and Analysis}
 
