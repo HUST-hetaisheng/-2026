@@ -143,71 +143,24 @@ judges’ scores and fan votes is proposed and evaluated to determine whether it
 
 \subsection{Model Assumptions}
 
-To construct a mathematically rigorous inverse estimation model, we adopt the following assumptions, categorized by their nature and justification.
+\textbf{Assumption 1 (Vote Share Modeling):}
+Fan votes are modeled as relative vote shares rather than absolute counts. For each week, all contestants’ vote shares are nonnegative and sum to one.
 
-\subsubsection{Fan Vote Behavior Assumptions}
+\textbf{Assumption 2 (Temporal Smoothness):}
+For contestants remaining in the competition, fan vote shares change smoothly between consecutive weeks.
 
-\textbf{Assumption 1 (Vote Share Sufficiency):} \label{ass:vote_share}
-Fan votes are modeled as \emph{shares} (proportions) rather than absolute vote counts:
-\begin{equation}
-f_{i,t}\ge 0,\qquad \sum_{i\in A_t} f_{i,t}=1.
-\end{equation}
-\emph{Justification:} The elimination rule depends only on relative vote magnitudes, not total vote volume. This reduces the dimensionality of the inverse problem by eliminating the non-identifiable parameter $T_t$ (total votes cast in week $t$). Absolute vote counts are computed post hoc for presentation purposes only: $V_{i,t}=T_t\cdot f_{i,t}$ with $T_t=10^7$ (arbitrary scale).
+\textbf{Assumption 3 (Maximum Entropy):}
+In the absence of restrictive information, fan vote distributions are assumed to be as uniform as possible.
 
-\textbf{Assumption 2 (Temporal Continuity of Popularity):}
-Contestant popularity, as reflected in fan vote shares, evolves smoothly across consecutive weeks:
-\begin{equation}
-\text{Minimize}\quad \sum_{t=2}^{T}\sum_{i\in A_t\cap A_{t-1}} (f_{i,t}-f_{i,t-1})^2.
-\end{equation}
-\emph{Justification:} In reality, a contestant's fan base does not fluctuate wildly from week to week unless extraordinary events occur (e.g., viral performances, scandals). This regularization prevents the model from overfitting to single-week eliminations by inventing implausible vote spikes.
+\textbf{Assumption 4 (Judges’ Save Bias):}
+When judges choose between the bottom two contestants, they are more likely to save the contestant with the higher judges’ score, but the decision is not deterministic.
 
-\textbf{Assumption 3 (Maximum Entropy Principle):}
-In the absence of evidence to the contrary, fan vote distributions should be as uniform as possible (maximum entropy):
-\begin{equation}
-\text{Minimize}\quad \sum_{t=1}^{T}\sum_{i\in A_t} f_{i,t}\log f_{i,t}.
-\end{equation}
-\emph{Justification:} This is a standard principle in inverse problems \cite{Jaynes1957}. By maximizing entropy (equivalently, minimizing negative entropy), we avoid introducing spurious structure (e.g., extreme vote concentration) that is not forced by the elimination constraints. The solution remains as ``agnostic'' as the data allow.
+\textbf{Assumption 5 (Stability to Perturbations):}
+Small perturbations in judges’ scores produce bounded changes in the estimated fan vote shares.
 
-\subsubsection{Rule Mechanism Assumptions}
+\textbf{Assumption 6 (Independent Perturbations):}
+Judges’ score perturbations are assumed to be independent across contestants and weeks.
 
-\textbf{Assumption 4 (Judges' Save Preference):} \label{ass:judges_save}
-When judges select from the bottom two contestants $\{e, b\}$ (Seasons 28--34), they probabilistically favor saving the contestant with higher judge scores:
-\begin{equation}
-\Pr(\text{eliminate } e \mid e, b) = \sigma\left(\kappa(J_{b,t} - J_{e,t})\right),
-\end{equation}
-where $\sigma(\cdot)$ is the sigmoid function and $\kappa>0$ controls sensitivity.
-\emph{Justification:} Judges are experts evaluating technical merit; their save decision should correlate with their own scores. The probabilistic formulation captures uncertainty in unobserved bottom-two partners.
-
-\subsubsection{External Validation Assumptions}
-
-\textbf{Assumption 5 (Google Trends as Attention Proxy):} \label{ass:google_trends}
-Public attention to contestants, as measured by Google search trends during competition weeks, serves as an independent validation signal for estimated fan vote shares.
-\emph{Justification:} Prior studies on televised competitions have shown strong correlation between online search activity and voting behavior \cite{GoogleTrendsTV}. While not used as a hard constraint in the base model, Google Trends data can:
-\begin{itemize}
-    \item Cross-validate high-popularity contestants (e.g., if estimated $f_{i,t}$ is low but Google Trends spike, the model may be under-predicting fan votes).
-    \item Identify ``dark horse'' contestants (low pre-show visibility but strong fan vote performance).
-    \item Provide Bayesian priors in extended models: $f_{i,t}^{\text{prior}}\propto \text{GoogleTrends}_{i,t}$.
-\end{itemize}
-
-\subsubsection{Uncertainty Quantification Assumptions}
-
-\textbf{Assumption 6 (Perturbation Continuity):}
-Small perturbations in judge scores ($J_{i,t}\to J_{i,t}+\epsilon_{i,t}$) induce bounded changes in estimated fan votes, allowing ensemble-based uncertainty quantification.
-\emph{Justification:} If the inverse problem were extremely ill-posed, tiny noise would cause unbounded solution variation. Our ensemble experiments (Section~\ref{sec:certainty}) confirm finite sensitivity, validating this assumption.
-
-\textbf{Assumption 7 (Independence of Perturbations):}
-Judge score errors $\epsilon_{i,t}$ are independent across contestants and weeks.
-\emph{Justification:} This simplifies ensemble construction. In reality, judges may exhibit systematic biases, but modeling such correlations is beyond the scope of this inverse problem framework.
-
-\subsubsection{Optimization Assumptions}
-
-\textbf{Assumption 8 (Hierarchical Objective Prioritization):}
-Consistency with eliminations takes absolute priority over smoothness and entropy:
-\begin{enumerate}
-    \item \textbf{Stage 1:} Minimize slack $\sum_t \delta_t$ to achieve maximum consistency.
-    \item \textbf{Stage 2:} Subject to $\delta_t\le \delta_t^\star+\varepsilon$, optimize smoothness and entropy.
-\end{enumerate}
-\emph{Justification:} The primary goal is to \emph{explain} observed eliminations. Behavioral regularization (smoothness, entropy) is secondary and serves only as a tie-breaker when multiple solutions achieve equal consistency.
 
 \subsection{Notations}
 
