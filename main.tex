@@ -209,12 +209,12 @@ The dataset contains 34 seasons of DWTS with contestant information, weekly judg
     \item \textbf{Finals ranking:} The \texttt{placement} column provides final ranking (1--4 or 1--3). We use this to verify finals consistency and to impute final-week vote shares when needed.
 \end{itemize}
 
-\paragraph{2. Active Set Construction}
-For each week $t$ in each season $s$, we define the active contestant set:
-\begin{equation}
-A_t = \{i \in \text{contestants}_s : J_{i,t} > 0\}.
-\end{equation}
-This automatically excludes eliminated and withdrawn contestants from subsequent weeks.
+% \paragraph{2. Active Set Construction}
+% For each week $t$ in each season $s$, we define the active contestant set:
+% \begin{equation}
+% A_t = \{i \in \text{contestants}_s : J_{i,t} > 0\}.
+% \end{equation}
+% This automatically excludes eliminated and withdrawn contestants from subsequent weeks.
 
 \paragraph{3. Regime Classification}
 Based on historical DWTS rules \cite{WikiDWTS}, we classify seasons into three regimes:
@@ -225,11 +225,13 @@ Based on historical DWTS rules \cite{WikiDWTS}, we classify seasons into three r
 \end{itemize}
 
 \paragraph{4. Judge Share Normalization}
-To ensure fair comparison with fan vote shares, we normalize judges' scores to shares:
-\begin{equation}
-j_{i,t} = \frac{J_{i,t}}{\sum_{k\in A_t} J_{k,t}}.
-\end{equation}
-This ensures $\sum_{i\in A_t} j_{i,t} = 1$, matching the fan vote simplex constraint.
+To ensure fair comparison with fan vote shares, we normalize judges' scores to shares.This matches the fan vote simplex constraint.
+% \begin{equation}
+% j_{i,t} = \frac{J_{i,t}}{\sum_{k\in A_t} J_{k,t}}.
+% \end{equation}
+% This ensures $\sum_{i\in A_t} j_{i,t} = 1$, matching the fan vote simplex constraint.
+
+
 
 \paragraph{5. Week Type Annotation}
 We categorize weeks into types based on elimination patterns:
@@ -252,7 +254,6 @@ We perform the following validation checks:
 \end{itemize}
 
 After preprocessing, the clean dataset contains approximately 2,100 contestant-week observations across 34 seasons, with no missing values in critical fields ($J_{i,t}$, elimination status).
-
 \section{Model Development}
 
 \subsection{Rationale and Overall Structure}
@@ -277,8 +278,9 @@ is the normalized judges' share.
 $f_{i,w}$ is the (unknown) fan vote share, with $f_{i,w}\ge 0$ and 
 $\sum_{i\in A_w} f_{i,w}=1$. 
 $E_w$ denotes the set of eliminated contestants in week $w$.
-We use \texttt{results} to identify elimination weeks and \texttt{placement} to order
-eliminated contestants within the same week (only when placement differs).
+We use \texttt{results} to identify elimination weeks. 
+\texttt{placement} is only used to order contestants \emph{within the same elimination set} 
+when placement differs.
 
 \subsection{Week-Type Identification}
 Each week is classified as:
@@ -303,7 +305,7 @@ S_{i,w}=j_{i,w}+f_{i,w}.
 \label{eq:percent_score}
 \end{equation}
 
-\paragraph{Elimination constraints.}
+\paragraph{Elimination constraints (hard).}
 For single elimination,
 \begin{equation}
 S_{e,w}\le S_{i,w},\quad \forall i\in A_w\setminus\{e\}.
@@ -315,25 +317,25 @@ S_{e,w}\le S_{i,w},\quad \forall e\in E_w,\ \forall i\notin E_w.
 \label{eq:percent_multi}
 \end{equation}
 
-\paragraph{Placement usage (no future leakage).}
-If $a,b\in E_w$ and $p_a>p_b$ (worse final placement), we enforce only the \emph{within-week} ordering:
+\paragraph{Placement usage (soft, within-week only).}
+Placement is a season-level outcome, so we avoid using it across different weeks.
+If $a,b\in E_w$ and $p_a>p_b$ (worse final placement), we add a soft penalty:
 \begin{equation}
-S_{a,w}\le S_{b,w}.
-\label{eq:percent_place}
+\mathcal{L}_{\text{place}}=\sum_{(a,b)\in\mathcal{P}_w}\big[\,S_{a,w}-S_{b,w}\,\big]_+,
+\quad \mathcal{P}_w=\{(a,b)\mid a,b\in E_w,\ p_a>p_b\}.
+\label{eq:percent_place_soft}
 \end{equation}
-When placements are identical (e.g., seasons with tied eliminations), no internal ordering is imposed.
+When placements are identical, no internal ordering is imposed.
 
 \paragraph{Regularized inverse objective.}
-To resolve non-identifiability (especially in week 1 or no-elimination weeks), we use:
+To resolve non-identifiability (especially in week 1 or no-elimination weeks), we solve:
 \begin{equation}
 \min_{f_w}\ \lambda_1\|f_w-f_{w-1}\|_2^2+\lambda_2\|f_w-j_w\|_2^2
-\label{eq:percent_objective}
++\rho\,\mathcal{L}_{\text{place}}
+\label{eq:percent_objective_soft}
 \end{equation}
-subject to constraints \eqref{eq:percent_single}--\eqref{eq:percent_place}. 
-The first term enforces temporal smoothness, the second aligns votes with dance quality,
-which is consistent with audience behavior and prevents extreme, unstable solutions. 
-For the first week, the smoothness term is omitted and the quality-alignment term provides a 
-reasonable prior.
+subject only to the simplex and elimination constraints. 
+The first term enforces temporal smoothness; the second aligns votes with dance quality.
 
 \subsection{Rank Regime (Seasons 1--2)}
 \textbf{Why this model?} Rank seasons only reveal relative order, not score magnitudes.
@@ -346,7 +348,7 @@ R_{i,w}=r^J_{i,w}+r^F_{i,w},\quad \text{(larger is worse)}.
 \label{eq:rank_score}
 \end{equation}
 
-\paragraph{Elimination constraints.}
+\paragraph{Elimination constraints (hard).}
 Single elimination requires $R_{e,w}=\max_i R_{i,w}$.
 Multiple elimination requires $E_w$ to be the $|E_w|$ worst combined ranks.
 
@@ -367,7 +369,7 @@ that yields a stable solution while preserving the ranking rule.
 f_{i,w}\propto \exp\{-\gamma(r^F_{i,w}-1)\},
 \label{eq:rank_map}
 \end{equation}
-with normalization $\sum_i f_{i,w}=1$. This preserves order while providing interpretable shares.
+with normalization $\sum_i f_{i,w}=1$.
 
 \subsection{Bottom-Two + Judges’ Save (Seasons 28--34)}
 \textbf{Why this model?} The show identifies a bottom-two using combined ranks, then judges select
@@ -375,21 +377,20 @@ which to eliminate. A deterministic “lowest score eliminated” rule would mis
 mechanism and bias inference. We therefore model the judges’ save as a probability depending on
 judges’ scores.
 
-\paragraph{Bottom-two constraint.}
+\paragraph{Bottom-two constraint (hard).}
 \begin{equation}
 e\in \text{Bottom2}(R_{i,w}).
 \label{eq:bottom2}
 \end{equation}
 
-\paragraph{Judges’ choice probability.}
+\paragraph{Judges’ choice probability (behavioral).}
 For bottom-two contestants $a,b$:
 \begin{equation}
 P(\text{elim}=a)=\frac{\exp(-\eta J_a)}{\exp(-\eta J_a)+\exp(-\eta J_b)}.
 \label{eq:judges_save}
 \end{equation}
-This enforces the logic that higher judges’ scores imply lower elimination probability.
-If a high-scoring contestant is still eliminated, the model attributes this to relatively
-low fan support, aligning with the problem narrative.
+Higher judges’ scores imply lower elimination probability. If a high-scoring contestant is
+eliminated, the model attributes this to relatively low fan support.
 
 \paragraph{Placement usage.}
 Placement is used only to order contestants within the same elimination set (as in \eqref{eq:rank_place}),
@@ -405,25 +406,28 @@ S_{i,w}\ge S_{j,w} & \text{(Percent)}\\
 R_{i,w}\le R_{j,w} & \text{(Rank)}
 \end{cases}
 \]
-This avoids leaking future information into earlier weeks.
 
 \subsection{Consistency and Uncertainty (Model Outputs)}
-Consistency is defined by reconstructing eliminations under each regime:
+Consistency is evaluated without using placement information, \emph{except}
+(i) finals-week ordering and 
+(ii) within-week ordering inside a multi-elimination set.
+Specifically:
 \begin{itemize}
   \item Percent/Rank: predicted elimination set matches $E_w$.
   \item Bottom-two: eliminated contestant belongs to Bottom2.
   \item If placements differ within $E_w$, internal order must match.
+  \item Finals: ordering matches placement.
 \end{itemize}
 Uncertainty is reported \emph{by week} and \emph{by contestant} using confidence-interval width
-and coefficient of variation, reflecting the question of whether certainty is uniform across
-weeks or contestants.
+and coefficient of variation, reflecting whether certainty is uniform across weeks or contestants.
 
 \subsection{Why This Modeling Choice is Advantageous}
 This framework is \emph{rule-consistent} (mirrors official voting mechanics), \emph{robust} 
 (regularization avoids unstable inverse solutions), and \emph{interpretable} (each constraint 
-corresponds to a concrete production rule). It also separates information that is truly available
-in a given week from future outcomes, preventing information leakage while still exploiting
-placement in the only defensible way: ordering within the same elimination set.
+corresponds to a concrete production rule). It separates information available in a given week 
+from future outcomes, preventing leakage while still exploiting placement in the only defensible way: 
+ordering within the same elimination set.
+
 
 % ============================================
 % Full modeling for Question 1 (all seasons)
@@ -767,10 +771,6 @@ stable because the ranking constraint is strong and the active set is small.
 
 \begin{appendices}
 
-\section{Code Listing}
-The fan vote estimation is implemented in Python. The complete code is provided below.
-
-\lstinputlisting[language=Python, caption={Fan Vote Estimation Code}]{./code/fan_vote_convex.py}
 
 \end{appendices}
 
