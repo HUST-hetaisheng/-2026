@@ -253,6 +253,177 @@ We perform the following validation checks:
 
 After preprocessing, the clean dataset contains approximately 2,100 contestant-week observations across 34 seasons, with no missing values in critical fields ($J_{i,t}$, elimination status).
 
+\section{Model Development}
+
+\subsection{Rationale and Overall Structure}
+The central difficulty is that fan votes are unobserved while only weekly eliminations are known. 
+This is an inverse problem with incomplete information: a single elimination only determines 
+the worst-ranked contestant but leaves the relative ordering of the remaining contestants 
+underdetermined. Hence, a valid model must (i) respect the show’s rule changes across seasons, 
+(ii) handle irregular weekly events (no elimination, multiple eliminations, withdrawals, finals), 
+and (iii) introduce principled regularization to obtain stable, interpretable solutions.
+Therefore we adopt a \emph{regime-specific, week-type–aware} inverse framework: 
+Rank-based seasons (1--2), Percent-based seasons (3--27), and Rank with bottom-two + judges’ save 
+(28--34). This structure directly mirrors the show’s mechanics, avoids rule-mismatch bias, 
+and provides a transparent path to evaluate consistency and uncertainty.
+
+\subsection{Notation}
+Let $A_w$ be the set of active contestants in week $w$. 
+$J_{i,w}$ is contestant $i$'s total judges' score in week $w$, and 
+\[
+j_{i,w}=\frac{J_{i,w}}{\sum_{k\in A_w}J_{k,w}}
+\]
+is the normalized judges' share. 
+$f_{i,w}$ is the (unknown) fan vote share, with $f_{i,w}\ge 0$ and 
+$\sum_{i\in A_w} f_{i,w}=1$. 
+$E_w$ denotes the set of eliminated contestants in week $w$.
+We use \texttt{results} to identify elimination weeks and \texttt{placement} to order
+eliminated contestants within the same week (only when placement differs).
+
+\subsection{Week-Type Identification}
+Each week is classified as:
+\begin{itemize}
+  \item \textbf{Single elimination}: $|E_w|=1$.
+  \item \textbf{Multiple elimination}: $|E_w|>1$.
+  \item \textbf{No elimination}: $E_w=\varnothing$.
+  \item \textbf{Withdrew}: a contestant exits externally; no vote-based constraint is imposed.
+  \item \textbf{Finals}: placement determines the final ordering.
+\end{itemize}
+This classification is critical because elimination constraints are only valid when the show
+actually used a vote-based decision.
+
+\subsection{Percent Regime (Seasons 3--27)}
+\textbf{Why this model?} In percent seasons, judges' and fan contributions are combined 
+via normalized shares. Thus a linear combined score is the most faithful reconstruction of 
+the production rule, and it yields a convex inverse problem when paired with regularization.
+
+\paragraph{Combined score.}
+\begin{equation}
+S_{i,w}=j_{i,w}+f_{i,w}.
+\label{eq:percent_score}
+\end{equation}
+
+\paragraph{Elimination constraints.}
+For single elimination,
+\begin{equation}
+S_{e,w}\le S_{i,w},\quad \forall i\in A_w\setminus\{e\}.
+\label{eq:percent_single}
+\end{equation}
+For multiple elimination,
+\begin{equation}
+S_{e,w}\le S_{i,w},\quad \forall e\in E_w,\ \forall i\notin E_w.
+\label{eq:percent_multi}
+\end{equation}
+
+\paragraph{Placement usage (no future leakage).}
+If $a,b\in E_w$ and $p_a>p_b$ (worse final placement), we enforce only the \emph{within-week} ordering:
+\begin{equation}
+S_{a,w}\le S_{b,w}.
+\label{eq:percent_place}
+\end{equation}
+When placements are identical (e.g., seasons with tied eliminations), no internal ordering is imposed.
+
+\paragraph{Regularized inverse objective.}
+To resolve non-identifiability (especially in week 1 or no-elimination weeks), we use:
+\begin{equation}
+\min_{f_w}\ \lambda_1\|f_w-f_{w-1}\|_2^2+\lambda_2\|f_w-j_w\|_2^2
+\label{eq:percent_objective}
+\end{equation}
+subject to constraints \eqref{eq:percent_single}--\eqref{eq:percent_place}. 
+The first term enforces temporal smoothness, the second aligns votes with dance quality,
+which is consistent with audience behavior and prevents extreme, unstable solutions. 
+For the first week, the smoothness term is omitted and the quality-alignment term provides a 
+reasonable prior.
+
+\subsection{Rank Regime (Seasons 1--2)}
+\textbf{Why this model?} Rank seasons only reveal relative order, not score magnitudes.
+Thus the natural inverse object is the fan rank, not a numeric score. 
+We infer a feasible fan ranking consistent with eliminations, and map it to shares.
+
+\paragraph{Combined rank.}
+\begin{equation}
+R_{i,w}=r^J_{i,w}+r^F_{i,w},\quad \text{(larger is worse)}.
+\label{eq:rank_score}
+\end{equation}
+
+\paragraph{Elimination constraints.}
+Single elimination requires $R_{e,w}=\max_i R_{i,w}$.
+Multiple elimination requires $E_w$ to be the $|E_w|$ worst combined ranks.
+
+\paragraph{Placement within elimination set.}
+If $a,b\in E_w$ and $p_a>p_b$, enforce:
+\begin{equation}
+R_{a,w}\ge R_{b,w}.
+\label{eq:rank_place}
+\end{equation}
+
+\paragraph{Minimal-change fan ranking.}
+Among all feasible permutations of $r^F_{i,w}$, we choose the one with minimum change from the
+previous week (or closest to judges’ ranks in week 1). This is the weakest informative prior
+that yields a stable solution while preserving the ranking rule.
+
+\paragraph{Rank-to-share mapping.}
+\begin{equation}
+f_{i,w}\propto \exp\{-\gamma(r^F_{i,w}-1)\},
+\label{eq:rank_map}
+\end{equation}
+with normalization $\sum_i f_{i,w}=1$. This preserves order while providing interpretable shares.
+
+\subsection{Bottom-Two + Judges’ Save (Seasons 28--34)}
+\textbf{Why this model?} The show identifies a bottom-two using combined ranks, then judges select
+which to eliminate. A deterministic “lowest score eliminated” rule would misrepresent this
+mechanism and bias inference. We therefore model the judges’ save as a probability depending on
+judges’ scores.
+
+\paragraph{Bottom-two constraint.}
+\begin{equation}
+e\in \text{Bottom2}(R_{i,w}).
+\label{eq:bottom2}
+\end{equation}
+
+\paragraph{Judges’ choice probability.}
+For bottom-two contestants $a,b$:
+\begin{equation}
+P(\text{elim}=a)=\frac{\exp(-\eta J_a)}{\exp(-\eta J_a)+\exp(-\eta J_b)}.
+\label{eq:judges_save}
+\end{equation}
+This enforces the logic that higher judges’ scores imply lower elimination probability.
+If a high-scoring contestant is still eliminated, the model attributes this to relatively
+low fan support, aligning with the problem narrative.
+
+\paragraph{Placement usage.}
+Placement is used only to order contestants within the same elimination set (as in \eqref{eq:rank_place}),
+never to constrain other weeks.
+
+\subsection{Finals}
+Finals provide the strongest information: the combined rule directly ranks remaining contestants.
+Thus we impose a hard ordering in finals weeks only:
+\[
+\text{placement}(i)<\text{placement}(j)\Rightarrow 
+\begin{cases}
+S_{i,w}\ge S_{j,w} & \text{(Percent)}\\
+R_{i,w}\le R_{j,w} & \text{(Rank)}
+\end{cases}
+\]
+This avoids leaking future information into earlier weeks.
+
+\subsection{Consistency and Uncertainty (Model Outputs)}
+Consistency is defined by reconstructing eliminations under each regime:
+\begin{itemize}
+  \item Percent/Rank: predicted elimination set matches $E_w$.
+  \item Bottom-two: eliminated contestant belongs to Bottom2.
+  \item If placements differ within $E_w$, internal order must match.
+\end{itemize}
+Uncertainty is reported \emph{by week} and \emph{by contestant} using confidence-interval width
+and coefficient of variation, reflecting the question of whether certainty is uniform across
+weeks or contestants.
+
+\subsection{Why This Modeling Choice is Advantageous}
+This framework is \emph{rule-consistent} (mirrors official voting mechanics), \emph{robust} 
+(regularization avoids unstable inverse solutions), and \emph{interpretable} (each constraint 
+corresponds to a concrete production rule). It also separates information that is truly available
+in a given week from future outcomes, preventing information leakage while still exploiting
+placement in the only defensible way: ordering within the same elimination set.
 
 % ============================================
 % Full modeling for Question 1 (all seasons)
@@ -263,12 +434,12 @@ After preprocessing, the clean dataset contains approximately 2,100 contestant-w
 \subsection{Why vote estimation is special and modeling choice}
 Vote estimation for Dancing with the Stars is an inverse problem: judges' scores and weekly elimination outcomes are observed, while the audience votes are unobserved. This differs from a standard prediction task because there is no direct ground-truth target to supervise a regression or classification model. Supervised learning (e.g. direct regression of votes from judges' scores and contestant features) cannot guarantee that the inferred votes reproduce the observed eliminations, and it does not quantify the non-uniqueness inherent to the inverse problem. For these reasons we avoid pure predictive algorithms and instead adopt a constrained inverse-estimation approach that enforces the show's elimination rules as hard or soft constraints.
 
-Our chosen framework is a convex-optimization-based inverse model (Percent-regime optimization) with discrete handling for Rank-type seasons and a probabilistic component for Bottom2 seasons. 简要理由：
+Our chosen framework is a convex-optimization-based inverse model (Percent-regime optimization) with discrete handling for Rank-type seasons and a probabilistic component for Bottom2 seasons. Brief justification:
 \begin{itemize}
-  \item 规则约束可以用线性不等式或排列约束表示，便于直接嵌入优化问题；
-  \item 对于 Percent 型赛季，变量为投票份额，问题在适当正则化下可转化为凸问题，保证全局最优；
-  \item 对于 Rank 或 Bottom2 赛季，采用整数/概率方法处理非凸性，同时保持与整个季联立求解的思路一致；
-  \item 使用平滑与最大熵作为弱先验，既保留解释力也避免人为引入极端解。
+\item Rule constraints can be expressed as linear inequalities or permutation constraints, making them easy to embed directly into an optimization problem;
+\item For Percent-type seasons, the decision variables are vote shares; with appropriate regularization, the problem can be reformulated as a convex program, ensuring a global optimum;
+\item For Rank or Bottom2 seasons, integer or probabilistic methods are used to handle non-convexity, while maintaining consistency with a joint, season-wide optimization framework;
+\item Smoothing and maximum-entropy priors are introduced as weak priors, preserving interpretability while avoiding the artificial introduction of extreme solutions.
 \end{itemize}
 
 \subsection{Convex optimization model (overall)}
