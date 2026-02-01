@@ -296,8 +296,10 @@ To reflect this mechanism, we relax the hard elimination constraint used in earl
 In our implementation, we set $K=2$ to align with the standard "Bottom Two" format. This relaxation acknowledges that the eliminated individual was \textit{at risk}, but their final exit was moderated by judicial discretion.
 
 \subsubsection{Solution Algorithm: Stochastic Greedy Swapping}
-Since the rank-based combined score is discrete and non-differentiable, we employ a \textbf{Greedy Swapping Heuristic} (as implemented in our \texttt{enforce\_elimination\_rank} function) to find a feasible fan ranking $\mathbf{r}^F_w$. 
+Since the rank-based combined score is discrete and non-differentiable, we employ a \textbf{Greedy Swapping Heuristic}  to find a feasible fan ranking $\mathbf{r}^F_w$. 
+
 $\star$ \textbf{Initialization:} The fan ranks are initially set to a prior distribution (e.g., the previous week's ranks or judge-correlated ranks).
+
 $\star$ \textbf{Violation Identification:} If the observed eliminated contestant $e$ is not
 within the $\text{Bottom}_2$ of the combined ranks $\mathbf{R}_w$, the algorithm identifies
 \emph{offenders}—contestants who currently occupy the bottom two but should be safer than $e$.
@@ -317,6 +319,12 @@ The "Judges' Save" logic is implicitly captured here: if a contestant with high 
 \subsection{Model Performance and Empirical Validation}
 
 To address the core questions of consistency and certainty in our fan vote estimates, we evaluate model performance along two orthogonal dimensions: (1)~\textit{consistency}---whether our inferred fan votes produce elimination outcomes that match the observed results; and (2)~\textit{uncertainty}---how precisely we can pinpoint the fan vote shares, quantified by the coefficient of variation (CV) and confidence interval width.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/cons&cer..png}
+    \caption{Enter Caption}
+    \label{fig:placeholder}
+\end{figure}
 
 \subsubsection{Consistency Analysis}
 
@@ -325,9 +333,9 @@ To address the core questions of consistency and certainty in our fan vote estim
     P_{\text{cons}} = \frac{1}{|W|} \sum_{w \in W} \mathbf{1}\left[\text{Elim}(\hat{\mathbf{v}}^{(w)}) = E_w\right].
 \end{equation}
 
-\textbf{Results by Season.} As illustrated in Figure~\ref{fig:cons_cer} (upper-right panel), the model achieves near-perfect consistency across the Percent regime (Seasons~3--27), with an average consistency probability of $\bar{P}_{\text{cons}} = 0.95$. The Rank regime (Seasons~1--2) exhibits slightly lower consistency ($\bar{P} = 0.88$), attributable to the rank-compression effect that reduces the discriminative power of elimination signals. The Bottom-2 regime (Seasons~28--34) maintains robust consistency ($\bar{P} = 0.89$) despite the structural ambiguity introduced by the judges' save mechanism.
+\textbf{Results by Season.} As illustrated in Figure~\ref{fig:cons_cer} (lower-right panel), the model achieves near-perfect consistency across the Percent regime (Seasons~3--27), with an average consistency probability of $\bar{P}_{\text{cons}} = 0.95$. The Rank regime (Seasons~1--2) exhibits slightly lower consistency ($\bar{P} = 0.88$), attributable to the rank-compression effect that reduces the discriminative power of elimination signals. The Bottom-2 regime (Seasons~28--34) maintains robust consistency ($\bar{P} = 0.89$) despite the structural ambiguity introduced by the judges' save mechanism.
 
-\textbf{Results by Week.} The lower-right panel of Figure~\ref{fig:cons_cer} reveals a temporal pattern: consistency remains high ($P > 0.93$) during early-to-mid competition (Weeks~1--8), but declines sharply in later weeks---particularly Week~10 ($P = 0.55$) and Week~11 ($P = 0.56$). This phenomenon reflects the \textit{information scarcity} in late-stage competition: with only 3--4 contestants remaining, a single elimination event provides limited discriminative constraints, increasing the feasible region of fan vote distributions that could explain the outcome.
+\textbf{Results by Week.} The upper-right panel of Figure~\ref{fig:cons_cer} reveals a temporal pattern: consistency remains high ($P > 0.93$) during early-to-mid competition (Weeks~1--8), but declines sharply in later weeks---particularly Week~10 ($P = 0.55$) and Week~11 ($P = 0.56$). This phenomenon reflects the \textit{information scarcity} in late-stage competition: with only 3--4 contestants remaining, a single elimination event provides limited discriminative constraints, increasing the feasible region of fan vote distributions that could explain the outcome.
 
 \subsubsection{Uncertainty Quantification}
 
@@ -336,9 +344,65 @@ To address the core questions of consistency and certainty in our fan vote estim
     \item \textbf{Coefficient of Variation (CV)}: $\text{CV}_i = \sigma_i / \mu_i$, capturing relative volatility of estimates across Monte Carlo samples.
     \item \textbf{Confidence Interval Width}: The 95\% CI width $w_{95} = \hat{v}_i^{(97.5)} - \hat{v}_i^{(2.5)}$, measuring absolute uncertainty magnitude.
 \end{itemize}
+\begin{table}[htbp]
+\centering
+\caption{Model Uncertainty (Coefficient of Variation) by Season and by Week}
+\label{tab:uncertainty}
+\small
+\begin{minipage}[t]{0.58\textwidth}
+\centering
+\textbf{(a) By Season}\\[3pt]
+\begin{tabular}{clc|clc|clc}
+\toprule
+\textbf{S} & \textbf{Reg.} & \textbf{CV} & \textbf{S} & \textbf{Reg.} & \textbf{CV} & \textbf{S} & \textbf{Reg.} & \textbf{CV} \\
+\midrule
+1  & Rank & 0.171 & 13 & Pct & 0.017 & 25 & Pct  & 0.014 \\
+2  & Rank & 0.201 & 14 & Pct & 0.015 & 26 & Pct  & 0.016 \\
+3  & Pct  & 0.014 & 15 & Pct & 0.018 & 27 & Pct  & 0.017 \\
+4  & Pct  & 0.015 & 16 & Pct & 0.014 & 28 & B-2  & 0.313 \\
+5  & Pct  & 0.012 & 17 & Pct & 0.014 & 29 & B-2  & 0.493 \\
+6  & Pct  & 0.017 & 18 & Pct & 0.011 & 30 & B-2  & 0.520 \\
+7  & Pct  & 0.015 & 19 & Pct & 0.011 & 31 & B-2  & 0.502 \\
+8  & Pct  & 0.017 & 20 & Pct & 0.012 & 32 & B-2  & 0.476 \\
+9  & Pct  & 0.017 & 21 & Pct & 0.014 & 33 & B-2  & 0.410 \\
+10 & Pct  & 0.016 & 22 & Pct & 0.015 & 34 & B-2  & 0.431 \\
+11 & Pct  & 0.014 & 23 & Pct & 0.012 &    &      &       \\
+12 & Pct  & 0.014 & 24 & Pct & 0.012 &    &      &       \\
+\midrule
+\multicolumn{9}{c}{\footnotesize\textit{Mean: Rank=0.186, Pct=0.014, B-2=0.449}} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.40\textwidth}
+\centering
+\textbf{(b) By Week}\\[3pt]
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Wk} & \textbf{Rank} & \textbf{Pct} & \textbf{B-2} & \textbf{All} \\
+\midrule
+1  & .293 & .022 & .487 & .142 \\
+2  & .236 & .018 & .518 & .146 \\
+3  & .196 & .015 & .523 & .144 \\
+4  & .165 & .014 & .523 & .144 \\
+5  & .122 & .012 & .511 & .140 \\
+6  & .086 & .011 & .451 & .124 \\
+7  & .093 & .011 & .405 & .114 \\
+8  & .078 & .010 & .343 & .100 \\
+9  & --   & .010 & .289 & .089 \\
+10 & --   & .008 & .260 & .077 \\
+11 & --   & .007 & .270 & .135 \\
+\\
+\midrule
+$\bar{x}$ & .159 & .013 & .416 & .123 \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\\[6pt]
+\footnotesize\textit{Note: Reg.=Regime; Pct=Percent; B-2=Bottom-2; CV=Coefficient of Variation.}
+\end{table}
 
-\textbf{Regime-Dependent Uncertainty.} Table~\ref{tab:uncertainty} and Figure~\ref{fig:cons_cer} (left panels) reveal a striking regime-dependent pattern in model uncertainty:
-
+Table~\ref{tab:uncertainty} and Figure~\ref{fig:cons_cer} (left panels) reveal a striking regime-dependent pattern in model uncertainty:
 \begin{itemize}
     \item \textbf{Percent Regime (S3--27):} The model achieves exceptional precision with an average CV of only $\bar{\text{CV}} = 0.014$ (1.4\%). This reflects the rich informational content of percentage-based voting: the exact numerical thresholds for elimination impose tight mathematical constraints on feasible fan vote distributions.
     
@@ -352,7 +416,7 @@ To address the core questions of consistency and certainty in our fan vote estim
 \begin{enumerate}
     \item \textbf{Within-Season Convergence:} For the Rank regime, CV decreases monotonically from Week~1 (0.29) to Week~8 (0.08), reflecting the cumulative information gain as sequential elimination events progressively constrain the feasible fan vote space.
     
-    \item \textbf{Late-Week Divergence:} Paradoxically, CI width \textit{increases} in final weeks (see Figure~\ref{fig:cons_cer}, upper-left). With fewer contestants remaining, each individual's vote share becomes more sensitive to perturbations, and the constraint structure becomes sparser, leading to an ``uncertainty horizon'' effect.
+    \item \textbf{Late-Week Divergence:} Paradoxically, CI width increases in final weeks (see Figure~\ref{fig:cons_cer}, upper-left). With fewer contestants remaining, each individual's vote share becomes more sensitive to perturbations, and the constraint structure becomes sparser, leading to an ``uncertainty horizon'' effect.
 \end{enumerate}
 
 \subsubsection{Summary of Validation Findings}
@@ -376,303 +440,297 @@ Information Quality & Moderate & High & Low \\
 
 In conclusion, our model demonstrates strong empirical validity: it correctly recovers elimination outcomes with high probability (overall $\bar{P}_{\text{cons}} = 0.93$), while uncertainty quantification reveals interpretable regime-dependent patterns that align with the theoretical information content of each voting mechanism. The Percent regime provides the most reliable inference, while the judges' save mechanism in recent seasons introduces irreducible ambiguity that is faithfully captured by our probabilistic framework.
 
-% -------------------- 引用图片 --------------------
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\textwidth]{figures/cons&cer.png}
-    \caption{Comprehensive visualization of model consistency and uncertainty. \textit{Upper-left:} Temporal evolution of inference confidence (CV and CI width by week). \textit{Lower-left:} Spatio-temporal CI width evolution across 34 seasons. \textit{Upper-right:} Weekly consistency trends by voting regime. \textit{Lower-right:} Season-level consistency probability with regime-colored bars.}
-    \label{fig:cons_cer}
-\end{figure}
-
-\section{Model Development}
-
-\subsection{Rationale and Overall Structure}
-The central difficulty is that fan votes are unobserved while only weekly eliminations are known. 
-This is an inverse problem with incomplete information: a single elimination only determines 
-the worst-ranked contestant but leaves the relative ordering of the remaining contestants 
-underdetermined. Hence, a valid model must (i) respect the show’s rule changes across seasons, 
-(ii) handle irregular weekly events (no elimination, multiple eliminations, withdrawals, finals), 
-and (iii) introduce principled regularization to obtain stable, interpretable solutions.
-Therefore we adopt a \emph{regime-specific, week-type–aware} inverse framework: 
-Rank-based seasons (1--2), Percent-based seasons (3--27), and Rank with bottom-two + judges’ save 
-(28--34). This structure directly mirrors the show’s mechanics, avoids rule-mismatch bias, 
-and provides a transparent path to evaluate consistency and uncertainty.
 
 
-\subsection{Week-Type Identification}
-Each week is classified as:
-\begin{itemize}
-  \item \textbf{Single elimination}: $|E_w|=1$.
-  \item \textbf{Multiple elimination}: $|E_w|>1$.
-  \item \textbf{No elimination}: $E_w=\varnothing$.
-  \item \textbf{Withdrew}: a contestant exits externally; no vote-based constraint is imposed.
-  \item \textbf{Finals}: placement determines the final ordering.
-\end{itemize}
-This classification is critical because elimination constraints are only valid when the show
-actually used a vote-based decision.
+% \section{Model Development}
 
-\subsection{Percent Regime (Seasons 3--27)}
-\textbf{Why this model?} In percent seasons, judges' and fan contributions are combined 
-via normalized shares. Thus a linear combined score is the most faithful reconstruction of 
-the production rule, and it yields a convex inverse problem when paired with regularization.
-
-\paragraph{Combined score.}
-\begin{equation}
-S_{i,w}=j_{i,w}+f_{i,w}.
-\label{eq:percent_score}
-\end{equation}
-
-\paragraph{Elimination constraints (hard).}
-For single elimination,
-\begin{equation}
-S_{e,w}\le S_{i,w},\quad \forall i\in A_w\setminus\{e\}.
-\label{eq:percent_single}
-\end{equation}
-For multiple elimination,
-\begin{equation}
-S_{e,w}\le S_{i,w},\quad \forall e\in E_w,\ \forall i\notin E_w.
-\label{eq:percent_multi}
-\end{equation}
-
-\paragraph{Placement usage (soft, within-week only).}
-Placement is a season-level outcome, so we avoid using it across different weeks.
-If $a,b\in E_w$ and $p_a>p_b$ (worse final placement), we add a soft penalty:
-\begin{equation}
-\mathcal{L}_{\text{place}}=\sum_{(a,b)\in\mathcal{P}_w}\big[\,S_{a,w}-S_{b,w}\,\big]_+,
-\quad \mathcal{P}_w=\{(a,b)\mid a,b\in E_w,\ p_a>p_b\}.
-\label{eq:percent_place_soft}
-\end{equation}
-When placements are identical, no internal ordering is imposed.
-
-\paragraph{Regularized inverse objective.}
-To resolve non-identifiability (especially in week 1 or no-elimination weeks), we solve:
-\begin{equation}
-\min_{f_w}\ \lambda_1\|f_w-f_{w-1}\|_2^2+\lambda_2\|f_w-j_w\|_2^2
-+\rho\,\mathcal{L}_{\text{place}}
-\label{eq:percent_objective_soft}
-\end{equation}
-subject only to the simplex and elimination constraints. 
-The first term enforces temporal smoothness; the second aligns votes with dance quality.
-
-\subsection{Rank Regime (Seasons 1--2)}
-\textbf{Why this model?} Rank seasons only reveal relative order, not score magnitudes.
-Thus the natural inverse object is the fan rank, not a numeric score. 
-We infer a feasible fan ranking consistent with eliminations, and map it to shares.
-
-\paragraph{Combined rank.}
-\begin{equation}
-R_{i,w}=r^J_{i,w}+r^F_{i,w},\quad \text{(larger is worse)}.
-\label{eq:rank_score}
-\end{equation}
-
-\paragraph{Elimination constraints (hard).}
-Single elimination requires $R_{e,w}=\max_i R_{i,w}$.
-Multiple elimination requires $E_w$ to be the $|E_w|$ worst combined ranks.
-
-\paragraph{Placement within elimination set.}
-If $a,b\in E_w$ and $p_a>p_b$, enforce:
-\begin{equation}
-R_{a,w}\ge R_{b,w}.
-\label{eq:rank_place}
-\end{equation}
-
-\paragraph{Minimal-change fan ranking.}
-Among all feasible permutations of $r^F_{i,w}$, we choose the one with minimum change from the
-previous week (or closest to judges’ ranks in week 1). This is the weakest informative prior
-that yields a stable solution while preserving the ranking rule.
-
-\paragraph{Rank-to-share mapping.}
-\begin{equation}
-f_{i,w}\propto \exp\{-\gamma(r^F_{i,w}-1)\},
-\label{eq:rank_map}
-\end{equation}
-with normalization $\sum_i f_{i,w}=1$.
-
-\subsection{Bottom-Two + Judges’ Save (Seasons 28--34)}
-\textbf{Why this model?} The show identifies a bottom-two using combined ranks, then judges select
-which to eliminate. A deterministic “lowest score eliminated” rule would misrepresent this
-mechanism and bias inference. We therefore model the judges’ save as a probability depending on
-judges’ scores.
-
-\paragraph{Bottom-two constraint (hard).}
-\begin{equation}
-e\in \text{Bottom2}(R_{i,w}).
-\label{eq:bottom2}
-\end{equation}
-
-\paragraph{Judges’ choice probability (behavioral).}
-For bottom-two contestants $a,b$:
-\begin{equation}
-P(\text{elim}=a)=\frac{\exp(-\eta J_a)}{\exp(-\eta J_a)+\exp(-\eta J_b)}.
-\label{eq:judges_save}
-\end{equation}
-Higher judges’ scores imply lower elimination probability. If a high-scoring contestant is
-eliminated, the model attributes this to relatively low fan support.
-
-\paragraph{Placement usage.}
-Placement is used only to order contestants within the same elimination set (as in \eqref{eq:rank_place}),
-never to constrain other weeks.
-
-\subsection{Finals}
-Finals provide the strongest information: the combined rule directly ranks remaining contestants.
-Thus we impose a hard ordering in finals weeks only:
-\[
-\text{placement}(i)<\text{placement}(j)\Rightarrow 
-\begin{cases}
-S_{i,w}\ge S_{j,w} & \text{(Percent)}\\
-R_{i,w}\le R_{j,w} & \text{(Rank)}
-\end{cases}
-\]
-
-\subsection{Pseudocode}
-% =============================================================================
-% Fan Vote Inversion - Pseudocode (algorithm + algpseudocode)
-% Required: \usepackage{algorithm}, \usepackage{algpseudocode}
-% =============================================================================
-
-% --- Brief Description ---
-% The inverse problem is solved by a regime-specific approach:
-% (1) Percent regime (Seasons 3--27): convex optimization with elimination constraints;
-% (2) Rank/Bottom2 regime (Seasons 1--2, 28--33): discrete rank assignment with iterative enforcement.
-% Uncertainty is quantified via ensemble perturbation of hyperparameters and judges' scores.
-
-\begin{algorithm}[H]
-\caption{Fan Vote Inversion Framework}
-\label{alg:main}
-\begin{algorithmic}[1]
-\Require Dataset $\mathcal{D}$, hyperparameters $\lambda_1, \lambda_2, \rho, \gamma$
-\Ensure Fan vote shares $\{f_{i,w}\}$, consistency indicators $\{C_w\}$
-\For{each season $s$ and week $w$}
-    \State $\mathcal{R} \gets \textsc{GetRegime}(s)$; \quad $(A_w, E_w, J_w) \gets \textsc{ExtractData}(s,w)$
-    \If{$\mathcal{R} = \texttt{percent}$}
-        \State $f_w \gets \textsc{SolvePercent}(J_w, A_w, E_w, f_{w-1})$ \Comment{Alg.~\ref{alg:percent}}
-    \Else
-        \State $r^F_w \gets \textsc{AssignRanks}(J_w, E_w, r^F_{w-1}, \mathcal{R})$ \Comment{Alg.~\ref{alg:rank}}
-        \State $f_w \gets \exp(-\gamma(r^F_w - 1)) / \sum \exp(\cdot)$ \Comment{Rank-to-share}
-    \EndIf
-    \State $C_w \gets \textsc{CheckConsistency}(f_w, J_w, E_w, \mathcal{R})$
-\EndFor
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-\caption{Percent Regime Solver (Seasons 3--27)}
-\label{alg:percent}
-\begin{algorithmic}[1]
-\Require $J_w, A_w, E_w, f_{w-1}, \lambda_1, \lambda_2, \rho$
-\Ensure Fan vote shares $f_w$
-\State $j_w \gets J_w / \sum J_w$ \Comment{Normalize judges' shares}
-\State \textbf{Objective:} $\min_f \lambda_1\|f - f_{w-1}\|^2 + \lambda_2\|f - j_w\|^2 + \rho \cdot \textsc{OrderPenalty}$
-\State \textbf{Constraints:} $\sum_i f_i = 1$, $f_i \ge 0$, $S_i \ge S_e\ (\forall i \notin E_w, e \in E_w)$
-\State $f^{(0)} \gets \textsc{FeasibleLP}(j_w, E_w)$; \quad $f_w \gets \textsc{SLSQP}(f^{(0)})$
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-\caption{Rank Regime Solver (Seasons 1--2, 28--33)}
-\label{alg:rank}
-\begin{algorithmic}[1]
-\Require $J_w, E_w, r^F_{w-1}, \mathcal{R}$
-\Ensure Fan ranks $r^F_w$
-\State $r^J_w \gets \textsc{DenseRank}(-J_w)$; \quad $\pi \gets \textsc{SortBy}(r^F_{w-1}$ or $r^J_w)$
-\State Assign worst ranks to $E_w$; fill remaining ranks by order $\pi$
-\If{$\mathcal{R} = \texttt{bottom2}$}
-    \State Find partner $p = \arg\max_{i \neq e} J_i$ s.t. $J_i \ge J_e$; set $r^F_p = n-1$
-\EndIf
-\State \textbf{Enforce:} Swap ranks until $E_w \subseteq \arg\max_k(r^J + r^F)$
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-\caption{Ensemble Uncertainty Quantification}
-\label{alg:ensemble}
-\begin{algorithmic}[1]
-\Require Base parameters, ensemble size $M$
-\Ensure $\mu, \sigma, \text{CI}_{95\%}$ for each $f_{i,w}$
-\For{$m = 1$ to $M$}
-    \State Perturb: $\tilde{\lambda} \sim \lambda(1 + \mathcal{U}_{[-0.3,0.3]})$, $\tilde{J} \sim J + \mathcal{N}(0, 0.5)$
-    \State Run inversion with perturbed parameters $\to f^{(m)}$
-\EndFor
-\State $\mu_{i,w} \gets \text{Mean}(\{f^{(m)}\})$, $\sigma_{i,w} \gets \text{Std}$, $\text{CI} \gets [Q_{2.5\%}, Q_{97.5\%}]$
-\end{algorithmic}
-\end{algorithm}
-
-\subsection{Consistency Metrics: Principle and Computation}
-\textbf{Principle.} Consistency measures whether the inferred fan votes reproduce the weekly
-elimination outcomes under the correct voting regime, without using future information.
-We only use \texttt{placement} for (i) finals-week ordering, and (ii) internal ordering
-within the \emph{same} multi-elimination set.
-
-\textbf{Weekly indicator.} For each week $w$ we define a binary indicator $C_w$:
-\begin{itemize}
-  \item \textbf{Percent/Rank regimes:} $C_w=1$ if the predicted elimination set matches the observed
-  elimination set $E_w$; otherwise $C_w=0$.
-  \item \textbf{Bottom-2 regime:} $C_w=1$ if the observed eliminated contestant lies in the model’s
-  bottom-two set; for multi-elimination, $C_w=1$ if the observed elimination set is contained in the
-  worst-$|E_w|$ positions.
-  \item \textbf{Finals week:} $C_w=1$ if the final ordering implied by $S_{i,w}$ (Percent) or
-  $R_{i,w}$ (Rank) matches \texttt{placement}.
-  \item \textbf{No-elimination / Withdrew weeks:} we set $C_w=1$ (no elimination is consistent by definition).
-\end{itemize}
-
-\textbf{Internal ordering for multi-elimination.}
-If $a,b\in E_w$ and $p_a>p_b$ (worse placement), we require
-$S_{a,w}\le S_{b,w}$ (Percent) or $R_{a,w}\ge R_{b,w}$ (Rank) within the elimination set.
-This does \emph{not} constrain survivors and therefore does not leak future information.
-
-\textbf{Season and week aggregates.}
-\[
-\text{CSR}_s=\frac{1}{|W_s|}\sum_{w\in W_s}C_w,\qquad
-\text{CSR}_{\text{week}}(t)=\frac{1}{|S_t|}\sum_{s\in S_t}C_{s,t}.
-\]
-These form the inputs for Table~\ref{tab:consistency_by_season} and
-Table~\ref{tab:consistency_by_week} (and their corresponding figures).
-
-\subsection{Uncertainty Metrics: Principle and Computation}
-\textbf{Principle.} Because elimination outcomes do not uniquely identify fan votes,
-we quantify uncertainty by perturbing model hyperparameters and judges’ scores to
-generate an ensemble of feasible solutions.
-
-\textbf{Ensemble statistics (per contestant-week).}
-For each $(i,w)$, let $\{f^{(m)}_{i,w}\}$ be the ensemble samples. We compute:
-\[
-\hat{\mu}_{i,w}=\frac{1}{M}\sum_m f^{(m)}_{i,w},\quad
-\hat{\sigma}_{i,w}=\sqrt{\frac{1}{M-1}\sum_m(f^{(m)}_{i,w}-\hat{\mu}_{i,w})^2},
-\]
-\[
-\text{CV}_{i,w}=\frac{\hat{\sigma}_{i,w}}{\hat{\mu}_{i,w}},\quad
-CI_{i,w}=[Q_{2.5\%},Q_{97.5\%}].
-\]
-
-\textbf{Aggregations.}
-We summarize uncertainty by week and by season:
-\[
-\overline{\text{CV}}_s=\frac{1}{N_s}\sum_{(i,w)\in s}\text{CV}_{i,w},\qquad
-\overline{\text{CV}}_t=\frac{1}{N_t}\sum_{(i,w)\in t}\text{CV}_{i,w},
-\]
-with analogous averages for CI width. These are reported in
-Table~\ref{tab:uncertainty_by_season} and Table~\ref{tab:uncertainty_by_week}.
-
-\subsection{Interpretation of Consistency and Uncertainty}
-\textbf{Consistency.} As shown in Figure~\ref{fig:consistency_by_season} and
-Figure~\ref{fig:consistency_by_week}, the model achieves very high consistency in
-Percent seasons, because numeric score constraints sharply restrict feasible vote distributions.
-Bottom-2 seasons exhibit lower consistency and larger variability, reflecting the
-judges’ save mechanism that weakens direct inference from public votes.
-
-\textbf{Uncertainty.} Figure~\ref{fig:uncertainty_by_season} and
-Figure~\ref{fig:uncertainty_by_week} show that Rank seasons have the highest CV,
-Percent seasons the lowest, and Bottom-2 seasons are intermediate. This aligns with
-information content: Rank rules provide only ordering constraints, while Percent rules
-impose numeric inequalities that significantly shrink the feasible solution space.
+% \subsection{Rationale and Overall Structure}
+% The central difficulty is that fan votes are unobserved while only weekly eliminations are known. 
+% This is an inverse problem with incomplete information: a single elimination only determines 
+% the worst-ranked contestant but leaves the relative ordering of the remaining contestants 
+% underdetermined. Hence, a valid model must (i) respect the show’s rule changes across seasons, 
+% (ii) handle irregular weekly events (no elimination, multiple eliminations, withdrawals, finals), 
+% and (iii) introduce principled regularization to obtain stable, interpretable solutions.
+% Therefore we adopt a \emph{regime-specific, week-type–aware} inverse framework: 
+% Rank-based seasons (1--2), Percent-based seasons (3--27), and Rank with bottom-two + judges’ save 
+% (28--34). This structure directly mirrors the show’s mechanics, avoids rule-mismatch bias, 
+% and provides a transparent path to evaluate consistency and uncertainty.
 
 
-\subsection{Why This Modeling Choice is Advantageous}
-This framework is \emph{rule-consistent} (mirrors official voting mechanics), \emph{robust} 
-(regularization avoids unstable inverse solutions), and \emph{interpretable} (each constraint 
-corresponds to a concrete production rule). It separates information available in a given week 
-from future outcomes, preventing leakage while still exploiting placement in the only defensible way: 
-ordering within the same elimination set.
+% \subsection{Week-Type Identification}
+% Each week is classified as:
+% \begin{itemize}
+%   \item \textbf{Single elimination}: $|E_w|=1$.
+%   \item \textbf{Multiple elimination}: $|E_w|>1$.
+%   \item \textbf{No elimination}: $E_w=\varnothing$.
+%   \item \textbf{Withdrew}: a contestant exits externally; no vote-based constraint is imposed.
+%   \item \textbf{Finals}: placement determines the final ordering.
+% \end{itemize}
+% This classification is critical because elimination constraints are only valid when the show
+% actually used a vote-based decision.
+
+% \subsection{Percent Regime (Seasons 3--27)}
+% \textbf{Why this model?} In percent seasons, judges' and fan contributions are combined 
+% via normalized shares. Thus a linear combined score is the most faithful reconstruction of 
+% the production rule, and it yields a convex inverse problem when paired with regularization.
+
+% \paragraph{Combined score.}
+% \begin{equation}
+% S_{i,w}=j_{i,w}+f_{i,w}.
+% \label{eq:percent_score}
+% \end{equation}
+
+% \paragraph{Elimination constraints (hard).}
+% For single elimination,
+% \begin{equation}
+% S_{e,w}\le S_{i,w},\quad \forall i\in A_w\setminus\{e\}.
+% \label{eq:percent_single}
+% \end{equation}
+% For multiple elimination,
+% \begin{equation}
+% S_{e,w}\le S_{i,w},\quad \forall e\in E_w,\ \forall i\notin E_w.
+% \label{eq:percent_multi}
+% \end{equation}
+
+% \paragraph{Placement usage (soft, within-week only).}
+% Placement is a season-level outcome, so we avoid using it across different weeks.
+% If $a,b\in E_w$ and $p_a>p_b$ (worse final placement), we add a soft penalty:
+% \begin{equation}
+% \mathcal{L}_{\text{place}}=\sum_{(a,b)\in\mathcal{P}_w}\big[\,S_{a,w}-S_{b,w}\,\big]_+,
+% \quad \mathcal{P}_w=\{(a,b)\mid a,b\in E_w,\ p_a>p_b\}.
+% \label{eq:percent_place_soft}
+% \end{equation}
+% When placements are identical, no internal ordering is imposed.
+
+% \paragraph{Regularized inverse objective.}
+% To resolve non-identifiability (especially in week 1 or no-elimination weeks), we solve:
+% \begin{equation}
+% \min_{f_w}\ \lambda_1\|f_w-f_{w-1}\|_2^2+\lambda_2\|f_w-j_w\|_2^2
+% +\rho\,\mathcal{L}_{\text{place}}
+% \label{eq:percent_objective_soft}
+% \end{equation}
+% subject only to the simplex and elimination constraints. 
+% The first term enforces temporal smoothness; the second aligns votes with dance quality.
+
+% \subsection{Rank Regime (Seasons 1--2)}
+% \textbf{Why this model?} Rank seasons only reveal relative order, not score magnitudes.
+% Thus the natural inverse object is the fan rank, not a numeric score. 
+% We infer a feasible fan ranking consistent with eliminations, and map it to shares.
+
+% \paragraph{Combined rank.}
+% \begin{equation}
+% R_{i,w}=r^J_{i,w}+r^F_{i,w},\quad \text{(larger is worse)}.
+% \label{eq:rank_score}
+% \end{equation}
+
+% \paragraph{Elimination constraints (hard).}
+% Single elimination requires $R_{e,w}=\max_i R_{i,w}$.
+% Multiple elimination requires $E_w$ to be the $|E_w|$ worst combined ranks.
+
+% \paragraph{Placement within elimination set.}
+% If $a,b\in E_w$ and $p_a>p_b$, enforce:
+% \begin{equation}
+% R_{a,w}\ge R_{b,w}.
+% \label{eq:rank_place}
+% \end{equation}
+
+% \paragraph{Minimal-change fan ranking.}
+% Among all feasible permutations of $r^F_{i,w}$, we choose the one with minimum change from the
+% previous week (or closest to judges’ ranks in week 1). This is the weakest informative prior
+% that yields a stable solution while preserving the ranking rule.
+
+% \paragraph{Rank-to-share mapping.}
+% \begin{equation}
+% f_{i,w}\propto \exp\{-\gamma(r^F_{i,w}-1)\},
+% \label{eq:rank_map}
+% \end{equation}
+% with normalization $\sum_i f_{i,w}=1$.
+
+% \subsection{Bottom-Two + Judges’ Save (Seasons 28--34)}
+% \textbf{Why this model?} The show identifies a bottom-two using combined ranks, then judges select
+% which to eliminate. A deterministic “lowest score eliminated” rule would misrepresent this
+% mechanism and bias inference. We therefore model the judges’ save as a probability depending on
+% judges’ scores.
+
+% \paragraph{Bottom-two constraint (hard).}
+% \begin{equation}
+% e\in \text{Bottom2}(R_{i,w}).
+% \label{eq:bottom2}
+% \end{equation}
+
+% \paragraph{Judges’ choice probability (behavioral).}
+% For bottom-two contestants $a,b$:
+% \begin{equation}
+% P(\text{elim}=a)=\frac{\exp(-\eta J_a)}{\exp(-\eta J_a)+\exp(-\eta J_b)}.
+% \label{eq:judges_save}
+% \end{equation}
+% Higher judges’ scores imply lower elimination probability. If a high-scoring contestant is
+% eliminated, the model attributes this to relatively low fan support.
+
+% \paragraph{Placement usage.}
+% Placement is used only to order contestants within the same elimination set (as in \eqref{eq:rank_place}),
+% never to constrain other weeks.
+
+% \subsection{Finals}
+% Finals provide the strongest information: the combined rule directly ranks remaining contestants.
+% Thus we impose a hard ordering in finals weeks only:
+% \[
+% \text{placement}(i)<\text{placement}(j)\Rightarrow 
+% \begin{cases}
+% S_{i,w}\ge S_{j,w} & \text{(Percent)}\\
+% R_{i,w}\le R_{j,w} & \text{(Rank)}
+% \end{cases}
+% \]
+
+% \subsection{Pseudocode}
+% % =============================================================================
+% % Fan Vote Inversion - Pseudocode (algorithm + algpseudocode)
+% % Required: \usepackage{algorithm}, \usepackage{algpseudocode}
+% % =============================================================================
+
+% % --- Brief Description ---
+% % The inverse problem is solved by a regime-specific approach:
+% % (1) Percent regime (Seasons 3--27): convex optimization with elimination constraints;
+% % (2) Rank/Bottom2 regime (Seasons 1--2, 28--33): discrete rank assignment with iterative enforcement.
+% % Uncertainty is quantified via ensemble perturbation of hyperparameters and judges' scores.
+
+% \begin{algorithm}[H]
+% \caption{Fan Vote Inversion Framework}
+% \label{alg:main}
+% \begin{algorithmic}[1]
+% \Require Dataset $\mathcal{D}$, hyperparameters $\lambda_1, \lambda_2, \rho, \gamma$
+% \Ensure Fan vote shares $\{f_{i,w}\}$, consistency indicators $\{C_w\}$
+% \For{each season $s$ and week $w$}
+%     \State $\mathcal{R} \gets \textsc{GetRegime}(s)$; \quad $(A_w, E_w, J_w) \gets \textsc{ExtractData}(s,w)$
+%     \If{$\mathcal{R} = \texttt{percent}$}
+%         \State $f_w \gets \textsc{SolvePercent}(J_w, A_w, E_w, f_{w-1})$ \Comment{Alg.~\ref{alg:percent}}
+%     \Else
+%         \State $r^F_w \gets \textsc{AssignRanks}(J_w, E_w, r^F_{w-1}, \mathcal{R})$ \Comment{Alg.~\ref{alg:rank}}
+%         \State $f_w \gets \exp(-\gamma(r^F_w - 1)) / \sum \exp(\cdot)$ \Comment{Rank-to-share}
+%     \EndIf
+%     \State $C_w \gets \textsc{CheckConsistency}(f_w, J_w, E_w, \mathcal{R})$
+% \EndFor
+% \end{algorithmic}
+% \end{algorithm}
+
+% \begin{algorithm}[H]
+% \caption{Percent Regime Solver (Seasons 3--27)}
+% \label{alg:percent}
+% \begin{algorithmic}[1]
+% \Require $J_w, A_w, E_w, f_{w-1}, \lambda_1, \lambda_2, \rho$
+% \Ensure Fan vote shares $f_w$
+% \State $j_w \gets J_w / \sum J_w$ \Comment{Normalize judges' shares}
+% \State \textbf{Objective:} $\min_f \lambda_1\|f - f_{w-1}\|^2 + \lambda_2\|f - j_w\|^2 + \rho \cdot \textsc{OrderPenalty}$
+% \State \textbf{Constraints:} $\sum_i f_i = 1$, $f_i \ge 0$, $S_i \ge S_e\ (\forall i \notin E_w, e \in E_w)$
+% \State $f^{(0)} \gets \textsc{FeasibleLP}(j_w, E_w)$; \quad $f_w \gets \textsc{SLSQP}(f^{(0)})$
+% \end{algorithmic}
+% \end{algorithm}
+
+% \begin{algorithm}[H]
+% \caption{Rank Regime Solver (Seasons 1--2, 28--33)}
+% \label{alg:rank}
+% \begin{algorithmic}[1]
+% \Require $J_w, E_w, r^F_{w-1}, \mathcal{R}$
+% \Ensure Fan ranks $r^F_w$
+% \State $r^J_w \gets \textsc{DenseRank}(-J_w)$; \quad $\pi \gets \textsc{SortBy}(r^F_{w-1}$ or $r^J_w)$
+% \State Assign worst ranks to $E_w$; fill remaining ranks by order $\pi$
+% \If{$\mathcal{R} = \texttt{bottom2}$}
+%     \State Find partner $p = \arg\max_{i \neq e} J_i$ s.t. $J_i \ge J_e$; set $r^F_p = n-1$
+% \EndIf
+% \State \textbf{Enforce:} Swap ranks until $E_w \subseteq \arg\max_k(r^J + r^F)$
+% \end{algorithmic}
+% \end{algorithm}
+
+% \begin{algorithm}[H]
+% \caption{Ensemble Uncertainty Quantification}
+% \label{alg:ensemble}
+% \begin{algorithmic}[1]
+% \Require Base parameters, ensemble size $M$
+% \Ensure $\mu, \sigma, \text{CI}_{95\%}$ for each $f_{i,w}$
+% \For{$m = 1$ to $M$}
+%     \State Perturb: $\tilde{\lambda} \sim \lambda(1 + \mathcal{U}_{[-0.3,0.3]})$, $\tilde{J} \sim J + \mathcal{N}(0, 0.5)$
+%     \State Run inversion with perturbed parameters $\to f^{(m)}$
+% \EndFor
+% \State $\mu_{i,w} \gets \text{Mean}(\{f^{(m)}\})$, $\sigma_{i,w} \gets \text{Std}$, $\text{CI} \gets [Q_{2.5\%}, Q_{97.5\%}]$
+% \end{algorithmic}
+% \end{algorithm}
+
+% \subsection{Consistency Metrics: Principle and Computation}
+% \textbf{Principle.} Consistency measures whether the inferred fan votes reproduce the weekly
+% elimination outcomes under the correct voting regime, without using future information.
+% We only use \texttt{placement} for (i) finals-week ordering, and (ii) internal ordering
+% within the \emph{same} multi-elimination set.
+
+% \textbf{Weekly indicator.} For each week $w$ we define a binary indicator $C_w$:
+% \begin{itemize}
+%   \item \textbf{Percent/Rank regimes:} $C_w=1$ if the predicted elimination set matches the observed
+%   elimination set $E_w$; otherwise $C_w=0$.
+%   \item \textbf{Bottom-2 regime:} $C_w=1$ if the observed eliminated contestant lies in the model’s
+%   bottom-two set; for multi-elimination, $C_w=1$ if the observed elimination set is contained in the
+%   worst-$|E_w|$ positions.
+%   \item \textbf{Finals week:} $C_w=1$ if the final ordering implied by $S_{i,w}$ (Percent) or
+%   $R_{i,w}$ (Rank) matches \texttt{placement}.
+%   \item \textbf{No-elimination / Withdrew weeks:} we set $C_w=1$ (no elimination is consistent by definition).
+% \end{itemize}
+
+% \textbf{Internal ordering for multi-elimination.}
+% If $a,b\in E_w$ and $p_a>p_b$ (worse placement), we require
+% $S_{a,w}\le S_{b,w}$ (Percent) or $R_{a,w}\ge R_{b,w}$ (Rank) within the elimination set.
+% This does \emph{not} constrain survivors and therefore does not leak future information.
+
+% \textbf{Season and week aggregates.}
+% \[
+% \text{CSR}_s=\frac{1}{|W_s|}\sum_{w\in W_s}C_w,\qquad
+% \text{CSR}_{\text{week}}(t)=\frac{1}{|S_t|}\sum_{s\in S_t}C_{s,t}.
+% \]
+% These form the inputs for Table~\ref{tab:consistency_by_season} and
+% Table~\ref{tab:consistency_by_week} (and their corresponding figures).
+
+% \subsection{Uncertainty Metrics: Principle and Computation}
+% \textbf{Principle.} Because elimination outcomes do not uniquely identify fan votes,
+% we quantify uncertainty by perturbing model hyperparameters and judges’ scores to
+% generate an ensemble of feasible solutions.
+
+% \textbf{Ensemble statistics (per contestant-week).}
+% For each $(i,w)$, let $\{f^{(m)}_{i,w}\}$ be the ensemble samples. We compute:
+% \[
+% \hat{\mu}_{i,w}=\frac{1}{M}\sum_m f^{(m)}_{i,w},\quad
+% \hat{\sigma}_{i,w}=\sqrt{\frac{1}{M-1}\sum_m(f^{(m)}_{i,w}-\hat{\mu}_{i,w})^2},
+% \]
+% \[
+% \text{CV}_{i,w}=\frac{\hat{\sigma}_{i,w}}{\hat{\mu}_{i,w}},\quad
+% CI_{i,w}=[Q_{2.5\%},Q_{97.5\%}].
+% \]
+
+% \textbf{Aggregations.}
+% We summarize uncertainty by week and by season:
+% \[
+% \overline{\text{CV}}_s=\frac{1}{N_s}\sum_{(i,w)\in s}\text{CV}_{i,w},\qquad
+% \overline{\text{CV}}_t=\frac{1}{N_t}\sum_{(i,w)\in t}\text{CV}_{i,w},
+% \]
+% with analogous averages for CI width. These are reported in
+% Table~\ref{tab:uncertainty_by_season} and Table~\ref{tab:uncertainty_by_week}.
+
+% \subsection{Interpretation of Consistency and Uncertainty}
+% \textbf{Consistency.} As shown in Figure~\ref{fig:consistency_by_season} and
+% Figure~\ref{fig:consistency_by_week}, the model achieves very high consistency in
+% Percent seasons, because numeric score constraints sharply restrict feasible vote distributions.
+% Bottom-2 seasons exhibit lower consistency and larger variability, reflecting the
+% judges’ save mechanism that weakens direct inference from public votes.
+
+% \textbf{Uncertainty.} Figure~\ref{fig:uncertainty_by_season} and
+% Figure~\ref{fig:uncertainty_by_week} show that Rank seasons have the highest CV,
+% Percent seasons the lowest, and Bottom-2 seasons are intermediate. This aligns with
+% information content: Rank rules provide only ordering constraints, while Percent rules
+% impose numeric inequalities that significantly shrink the feasible solution space.
+
+
+% \subsection{Why This Modeling Choice is Advantageous}
+% This framework is \emph{rule-consistent} (mirrors official voting mechanics), \emph{robust} 
+% (regularization avoids unstable inverse solutions), and \emph{interpretable} (each constraint 
+% corresponds to a concrete production rule). It separates information available in a given week 
+% from future outcomes, preventing leakage while still exploiting placement in the only defensible way: 
+% ordering within the same elimination set.
 
 
 % ============================================
@@ -908,85 +966,7 @@ ordering within the same elimination set.
 
 
 
-\section{Model Results and Analysis}
 
-\subsection{Consistency with Eliminations}
-Table~\ref{tab:csr} shows the CSR by regime. Percent seasons achieve 100\% consistency by construction
-of hard constraints. Bottom2 seasons remain below 100\% because the bottom-two partner is unobserved
-and some weeks require relaxed constraints.
-
-\begin{table}[H]
-\centering
-\caption{Constraint Satisfaction Rate by Regime}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Regime} & \textbf{Seasons} & \textbf{CSR} \\
-\midrule
-Rank & 1--2 & 100.0\% \\
-Percent & 3--27 & 100.0\% \\
-Bottom2 & 28--34 & 79.7\% \\
-\bottomrule
-\end{tabular}
-\label{tab:csr}
-\end{table}
-
-\subsection{Certainty of Estimated Fan Votes}
-\label{sec:certainty}
-Average certainty by regime is summarized in Table~\ref{tab:certainty}. Percent seasons are most constrained,
-while Bottom2 seasons are least certain because the judges' save introduces additional ambiguity.
-
-\begin{table}[H]
-\centering
-\caption{Average Certainty by Regime (K=20 Ensemble)}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Regime} & \textbf{Avg Certainty} & \textbf{Interpretation} \\
-\midrule
-Rank & 0.946 & High (permutation ambiguity) \\
-Percent & 0.982 & Very high (hard constraints) \\
-Bottom2 & 0.786 & Moderate (judges' save + partner uncertainty) \\
-\bottomrule
-\end{tabular}
-\label{tab:certainty}
-\end{table}
-
-\subsection{Certainty Variation by Week Type}
-Certainty is not uniform across week types. Table~\ref{tab:weektype_certainty} reports the mean certainty
-for contestant-week observations by week type.
-
-\begin{table}[H]
-\centering
-\caption{Certainty by Week Type}
-\begin{tabular}{lccc}
-\toprule
-\textbf{Regime} & \textbf{Week Type} & \textbf{Count} & \textbf{Avg Certainty} \\
-\midrule
-Percent & single\_elim & 1391 & 0.986 \\
-Percent & no\_elim\_interp & 318 & 0.988 \\
-Percent & multi\_elim\_2 & 200 & 0.969 \\
-Percent & multi\_elim\_3 & 6 & 0.901 \\
-Percent & finals & 82 & 1.000 \\
-Bottom2 & single\_elim & 370 & 0.824 \\
-Bottom2 & bottom2\_relaxed & 108 & 0.818 \\
-Bottom2 & no\_elim\_interp & 108 & 0.826 \\
-Bottom2 & multi\_elim\_2 & 85 & 0.851 \\
-Bottom2 & finals & 31 & 1.000 \\
-\bottomrule
-\end{tabular}
-\label{tab:weektype_certainty}
-\end{table}
-
-\paragraph{Interpretation.}
-Multi-elimination weeks are the most uncertain due to tighter ordering requirements, while finals weeks are most
-stable because the ranking constraint is strong and the active set is small.
-
-\subsection{Why This Algorithm is Reasonable}
-\begin{itemize}
-\item \textbf{Inverse framing matches the data.} Fan votes are unobserved; eliminations provide indirect constraints.
-\item \textbf{Rule-consistency is primary.} The model enforces the show's mechanism by construction (with slack when needed).
-\item \textbf{Regularization encodes minimal behavioral assumptions.} Smoothness reflects persistent popularity; maximum entropy avoids inventing extreme vote spikes without evidence.
-\item \textbf{Uncertainty is part of the answer.} Non-identifiability is handled by an ensemble that quantifies certainty per contestant/week.
-\end{itemize}
 
 \section{Strengths and Weaknesses}
 
