@@ -2,52 +2,62 @@
 % Model Performance and Empirical Validation - LaTeX Code
 % ============================================================
 
-% -------------------- 两个并排表格：Uncertainty by Season & by Week --------------------
+% -------------------- 合并表格：Uncertainty by Season & by Week (左右并列) --------------------
 \begin{table}[htbp]
 \centering
-\caption{Model Uncertainty (CV) Across Seasons and Weeks by Voting Regime}
+\caption{Model Uncertainty (Coefficient of Variation) by Season and by Week}
 \label{tab:uncertainty}
-\begin{minipage}[t]{0.48\textwidth}
-\centering
-\subcaption{Uncertainty by Season (Avg CV)}
-\label{tab:uncertainty_season}
 \small
-\begin{tabular}{clc}
+\begin{minipage}[t]{0.58\textwidth}
+\centering
+\textbf{(a) By Season}\\[3pt]
+\begin{tabular}{clc|clc|clc}
 \toprule
-\textbf{Season} & \textbf{Regime} & \textbf{Avg CV} \\
+\textbf{S} & \textbf{Reg.} & \textbf{CV} & \textbf{S} & \textbf{Reg.} & \textbf{CV} & \textbf{S} & \textbf{Reg.} & \textbf{CV} \\
 \midrule
-1--2   & Rank     & 0.186 \\
-3--27  & Percent  & 0.014 \\
-28--34 & Bottom-2 & 0.449 \\
+1  & Rank & 0.171 & 13 & Pct & 0.017 & 25 & Pct  & 0.014 \\
+2  & Rank & 0.201 & 14 & Pct & 0.015 & 26 & Pct  & 0.016 \\
+3  & Pct  & 0.014 & 15 & Pct & 0.018 & 27 & Pct  & 0.017 \\
+4  & Pct  & 0.015 & 16 & Pct & 0.014 & 28 & B-2  & 0.313 \\
+5  & Pct  & 0.012 & 17 & Pct & 0.014 & 29 & B-2  & 0.493 \\
+6  & Pct  & 0.017 & 18 & Pct & 0.011 & 30 & B-2  & 0.520 \\
+7  & Pct  & 0.015 & 19 & Pct & 0.011 & 31 & B-2  & 0.502 \\
+8  & Pct  & 0.017 & 20 & Pct & 0.012 & 32 & B-2  & 0.476 \\
+9  & Pct  & 0.017 & 21 & Pct & 0.014 & 33 & B-2  & 0.410 \\
+10 & Pct  & 0.016 & 22 & Pct & 0.015 & 34 & B-2  & 0.431 \\
+11 & Pct  & 0.014 & 23 & Pct & 0.012 &    &      &       \\
+12 & Pct  & 0.014 & 24 & Pct & 0.012 &    &      &       \\
 \midrule
-\multicolumn{2}{l}{\textit{Overall Mean}} & 0.087 \\
+\multicolumn{9}{c}{\footnotesize\textit{Mean: Rank=0.186, Pct=0.014, B-2=0.449}} \\
 \bottomrule
 \end{tabular}
 \end{minipage}
 \hfill
-\begin{minipage}[t]{0.48\textwidth}
+\begin{minipage}[t]{0.40\textwidth}
 \centering
-\subcaption{Uncertainty by Week (Avg CV)}
-\label{tab:uncertainty_week}
-\small
+\textbf{(b) By Week}\\[3pt]
 \begin{tabular}{ccccc}
 \toprule
-\textbf{Week} & \textbf{Rank} & \textbf{Pct} & \textbf{B-2} & \textbf{All} \\
+\textbf{Wk} & \textbf{Rank} & \textbf{Pct} & \textbf{B-2} & \textbf{All} \\
 \midrule
-1  & 0.293 & 0.022 & 0.487 & 0.142 \\
-2  & 0.236 & 0.018 & 0.518 & 0.146 \\
-3  & 0.196 & 0.015 & 0.523 & 0.144 \\
-4  & 0.165 & 0.014 & 0.523 & 0.144 \\
-5  & 0.122 & 0.012 & 0.511 & 0.140 \\
-6  & 0.086 & 0.011 & 0.451 & 0.124 \\
-7  & 0.093 & 0.011 & 0.405 & 0.114 \\
-8  & 0.078 & 0.010 & 0.343 & 0.100 \\
-9  & --    & 0.010 & 0.289 & 0.089 \\
-10 & --    & 0.008 & 0.260 & 0.077 \\
-11 & --    & 0.007 & 0.270 & 0.135 \\
+1  & .293 & .022 & .487 & .142 \\
+2  & .236 & .018 & .518 & .146 \\
+3  & .196 & .015 & .523 & .144 \\
+4  & .165 & .014 & .523 & .144 \\
+5  & .122 & .012 & .511 & .140 \\
+6  & .086 & .011 & .451 & .124 \\
+7  & .093 & .011 & .405 & .114 \\
+8  & .078 & .010 & .343 & .100 \\
+9  & --   & .010 & .289 & .089 \\
+10 & --   & .008 & .260 & .077 \\
+11 & --   & .007 & .270 & .135 \\
+\midrule
+$\bar{x}$ & .159 & .013 & .416 & .123 \\
 \bottomrule
 \end{tabular}
 \end{minipage}
+\\[6pt]
+\footnotesize\textit{Note: Reg.=Regime; Pct=Percent; B-2=Bottom-2; CV=Coefficient of Variation.}
 \end{table}
 
 
