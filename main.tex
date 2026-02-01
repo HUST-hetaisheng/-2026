@@ -275,11 +275,12 @@ Instead of brute-force enumeration ($N!$ complexity), we employ a \textbf{Stocha
 \textbf{Third}, if the constraint is violated (i.e., the actual eliminated star has a "better" score than a survivor), the algorithm performs minimal swaps between the survivor and the eliminated star until the condition holds, prioritizing permutations that minimize the Kendall-Tau distance from the previous week.
 
 \subsubsection{Rank-to-Share Mapping (Gibbs Distribution)}
-To compare these results with Percent seasons, we map the inferred discrete ranks $r^F_i$ to continuous shares $f_i$ using a Softmax distribution:
+To compare these results with Percent seasons, we map the inferred discrete ranks $r^F_{i,w}$ to continuous shares $f_{i,w}$ using a Softmax distribution:
 \begin{equation}
-    f_{i} = \frac{\exp(-\gamma \cdot (r^F_{i} - 1))}{\sum_k \exp(-\gamma \cdot (r^F_{k} - 1))}
+    f_{i,w} = \frac{\exp(-\gamma \cdot (r^F_{i,w} - 1))}{\sum_k \exp(-\gamma \cdot (r^F_{k,w} - 1))}
+    \label{eq:gibbs_softmax}
 \end{equation}
-where $\gamma$ is solved using data from the third season, then back-substituted into the current stage's problem solution.
+where $\gamma > 0$ controls the steepness of the vote-share decay across ranks. This parameter is calibrated using early Percent-era seasons where both rank and percentage data are available.
 
 % =================================================================================
 % MODEL 3: JUDGES' SAVE REGIME (The Probabilistic Extension)
@@ -306,16 +307,15 @@ within the $\text{Bottom}_2$ of the combined ranks $\mathbf{R}_w$, the algorithm
 
 $\star$ \textbf{Minimal Swap Logic:} The algorithm iteratively executes minimal rank swaps between $e$ and these offenders. Each swap is designed to push $e$ deeper into the danger zone while minimizing the Kendall-Tau distance from the prior ranking, ensuring the reconstructed votes represent the \textit{least-informed sufficient deviation} required to explain the result.
 
-\subsubsection{Probabilistic Mapping and Ensemble Inference}
-To translate these discrete ranks into continuous vote shares for cross-season analysis, we apply a \textbf{Gibbs-Softmax Mapping}:
+\subsubsection{Probabilistic Judges' Save and Ensemble Inference}
+The Judges' Save mechanism introduces an additional layer of uncertainty: even after determining the Bottom-Two, the final elimination depends on judges' discretion. We model this decision as a score-biased logistic choice: given Bottom-Two members $\{a, b\}$, the probability of eliminating $a$ is
 \begin{equation}
-    f_{i,w} = \frac{\exp(-\gamma(r^F_{i,w}-1))}{\sum_{k} \exp(-\gamma(r^F_{k,w}-1))}
+    P(\text{Elim } a \mid a, b \in \mathcal{B}) = \frac{1}{1 + \exp\left(\beta(J_a - J_b)\right)}
+    \label{eq:judge_save_prob}
 \end{equation}
-where $\gamma$ captures the latent "decay" of fan support across the leaderboard. 
+where $\beta > 0$ quantifies judges' tendency to save higher-scored contestants. The optimal fan ranking $\mathbf{r}^{F*}_w$ maximizes the likelihood of the observed elimination: $\mathbf{r}^{F*}_w = \arg\max P(\text{Elim } e_w \mid \mathcal{B}(\mathbf{r}^F))$ subject to $e_w \in \mathcal{B}(\mathbf{r}^F)$.
 
-To quantify the inherent ambiguity of the Judges' Save, we do not produce a single deterministic answer. Instead, we utilize an \textbf{Ensemble Perturbation Method}. By injecting Gaussian noise $\epsilon \sim \mathcal{N}(0, \sigma^2)$ into the judge scores $\mathbf{J}_w$ and running the swapping heuristic $N=1,000$ times, we generate a posterior distribution of $f_{i,w}$. 
-
-The "Judges' Save" logic is implicitly captured here: if a contestant with high judge scores is eliminated, the ensemble of valid $f_{i,w}$ will converge toward significantly lower values to counteract the high $J_{i,w}$ and force them into the Bottom Two. The variance of this ensemble (Coefficient of Variation) serves as our formal measure of model certainty, reflecting the "transparency" of the elimination in that specific week.
+To quantify the inherent ambiguity, we employ an \textbf{Ensemble Perturbation Method}. By injecting Gaussian noise $\epsilon \sim \mathcal{N}(0, \sigma^2)$ into judge scores and running the optimization $K=1{,}000$ times, we generate a posterior distribution over fan rankings. These discrete rankings are then converted to continuous vote shares using the Gibbs-Softmax mapping in Eq.~\eqref{eq:gibbs_softmax}. The variance of this ensemble (Coefficient of Variation) serves as our formal measure of model certainty, reflecting the ``transparency'' of each elimination event.
 \subsection{Model Performance and Empirical Validation}
 
 To address the core questions of consistency and certainty in our fan vote estimates, we evaluate model performance along two orthogonal dimensions: (1)~\textit{consistency}---whether our inferred fan votes produce elimination outcomes that match the observed results; and (2)~\textit{uncertainty}---how precisely we can pinpoint the fan vote shares, quantified by the coefficient of variation (CV) and confidence interval width.
